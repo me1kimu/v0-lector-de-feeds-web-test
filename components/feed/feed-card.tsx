@@ -209,7 +209,7 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
           {item.contentHtml ? (
             <div 
               dangerouslySetInnerHTML={{ __html: item.contentHtml }} 
-              className="prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
+              className="prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-p:text-foreground prose-p:m-0 prose-span:text-foreground prose-div:text-foreground [&_*]:text-foreground"
             />
           ) : (
             <p className="whitespace-pre-wrap">{item.content}</p>

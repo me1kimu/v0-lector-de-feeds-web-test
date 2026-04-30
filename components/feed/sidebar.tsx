@@ -11,7 +11,9 @@ import {
   Bell,
   RefreshCw,
   Plus,
-  Layers
+  Layers,
+  Twitter,
+  Camera
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,8 +24,8 @@ const sourceTypeIcons: Record<SourceType, React.ReactNode> = {
   mastodon: <AtSign className="h-4 w-4" />,
   bluesky: <CloudSun className="h-4 w-4" />,
   pixelfed: <Layers className="h-4 w-4" />,
-  instagram: <Layers className="h-4 w-4" />,
-  twitter: <Layers className="h-4 w-4" />,
+  instagram: <Camera className="h-4 w-4" />,
+  twitter: <Twitter className="h-4 w-4" />,
   inkbunny: <Layers className="h-4 w-4" />,
   finance: <Layers className="h-4 w-4" />
 }

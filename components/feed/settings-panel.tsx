@@ -56,13 +56,17 @@ import {
   Layers,
   Settings,
   Eye,
-  EyeOff
+  EyeOff,
+  Twitter,
+  Camera
 } from 'lucide-react'
 
-const sourceTypeOptions: { value: SourceType; label: string; icon: React.ReactNode }[] = [
+const sourceTypeOptions: { value: SourceType; label: string; icon: React.ReactNode; description?: string }[] = [
   { value: 'rss', label: 'RSS Feed', icon: <Rss className="h-4 w-4" /> },
   { value: 'mastodon', label: 'Mastodon', icon: <AtSign className="h-4 w-4" /> },
   { value: 'bluesky', label: 'Bluesky', icon: <CloudSun className="h-4 w-4" /> },
+  { value: 'twitter', label: 'Twitter/X', icon: <Twitter className="h-4 w-4" />, description: 'Solo perfiles públicos' },
+  { value: 'instagram', label: 'Instagram', icon: <Camera className="h-4 w-4" />, description: 'Solo perfiles públicos' },
 ]
 
 interface AddSourceFormProps {
@@ -212,6 +216,36 @@ function AddSourceForm({ onAdd, onCancel }: AddSourceFormProps) {
           </>
         )}
         
+        {type === 'twitter' && (
+          <Field>
+            <FieldLabel>Nombre de usuario de Twitter/X</FieldLabel>
+            <Input 
+              value={credentials.handle || ''} 
+              onChange={(e) => setCredentials({ ...credentials, handle: e.target.value })}
+              placeholder="elonmusk"
+              required
+            />
+            <FieldDescription>
+              Solo funcionan perfiles públicos. Se usa Nitter como proxy.
+            </FieldDescription>
+          </Field>
+        )}
+        
+        {type === 'instagram' && (
+          <Field>
+            <FieldLabel>Nombre de usuario de Instagram</FieldLabel>
+            <Input 
+              value={credentials.handle || ''} 
+              onChange={(e) => setCredentials({ ...credentials, handle: e.target.value })}
+              placeholder="instagram"
+              required
+            />
+            <FieldDescription>
+              Solo funcionan perfiles públicos. Se usa RSS Bridge como proxy.
+            </FieldDescription>
+          </Field>
+        )}
+        
         <Field>
           <FieldLabel>Intervalo de actualización</FieldLabel>
           <div className="flex items-center gap-4">
@@ -254,8 +288,8 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
     mastodon: <AtSign className="h-4 w-4" />,
     bluesky: <CloudSun className="h-4 w-4" />,
     pixelfed: <Layers className="h-4 w-4" />,
-    instagram: <Layers className="h-4 w-4" />,
-    twitter: <Layers className="h-4 w-4" />,
+    instagram: <Camera className="h-4 w-4" />,
+    twitter: <Twitter className="h-4 w-4" />,
     inkbunny: <Layers className="h-4 w-4" />,
     finance: <Layers className="h-4 w-4" />
   }

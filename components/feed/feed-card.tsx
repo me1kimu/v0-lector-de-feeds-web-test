@@ -15,7 +15,9 @@ import {
   AtSign,
   CloudSun,
   MoreHorizontal,
-  ImageOff
+  ImageOff,
+  Twitter,
+  Camera
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -33,8 +35,8 @@ const sourceIcons = {
   mastodon: <AtSign className="h-3 w-3" />,
   bluesky: <CloudSun className="h-3 w-3" />,
   pixelfed: <Rss className="h-3 w-3" />,
-  instagram: <Rss className="h-3 w-3" />,
-  twitter: <Rss className="h-3 w-3" />,
+  instagram: <Camera className="h-3 w-3" />,
+  twitter: <Twitter className="h-3 w-3" />,
   inkbunny: <Rss className="h-3 w-3" />,
   finance: <Rss className="h-3 w-3" />
 }

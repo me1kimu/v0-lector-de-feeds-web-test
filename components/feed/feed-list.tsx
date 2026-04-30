@@ -1,0 +1,129 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useFeedStore } from '@/lib/store'
+import { FeedCard } from './feed-card'
+import { Empty, EmptyDescription, EmptyIcon, EmptyTitle } from '@/components/ui/empty'
+import { Spinner } from '@/components/ui/spinner'
+import { Rss, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+
+export function FeedList() {
+  const { 
+    items, 
+    sources,
+    isLoading, 
+    settings,
+    activeFilter,
+    activeSourceId,
+    refreshAllSources,
+    setSettingsOpen
+  } = useFeedStore()
+  
+  // Set up auto-refresh based on source intervals
+  useEffect(() => {
+    const intervals: NodeJS.Timeout[] = []
+    
+    sources.forEach(source => {
+      if (source.enabled && source.refreshInterval > 0) {
+        const interval = setInterval(() => {
+          useFeedStore.getState().refreshSource(source.id)
+        }, source.refreshInterval * 60 * 1000)
+        intervals.push(interval)
+      }
+    })
+    
+    return () => {
+      intervals.forEach(clearInterval)
+    }
+  }, [sources])
+  
+  const activeSource = activeSourceId 
+    ? sources.find(s => s.id === activeSourceId) 
+    : null
+  
+  const title = activeSource 
+    ? activeSource.name 
+    : activeFilter === 'all' 
+      ? 'Todos los feeds' 
+      : activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)
+  
+  if (sources.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Empty>
+          <EmptyIcon>
+            <Rss className="h-10 w-10" />
+          </EmptyIcon>
+          <EmptyTitle>Bienvenido a FeedReader</EmptyTitle>
+          <EmptyDescription>
+            Comienza agregando fuentes RSS, Mastodon o Bluesky para ver tu feed unificado.
+          </EmptyDescription>
+          <Button onClick={() => setSettingsOpen(true)} className="mt-4">
+            Agregar primera fuente
+          </Button>
+        </Empty>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+          <p className="text-sm text-muted-foreground">
+            {items.length} elemento{items.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={refreshAllSources}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </Button>
+      </header>
+      
+      {/* Feed */}
+      <ScrollArea className="flex-1">
+        {isLoading && items.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <Spinner className="h-8 w-8 text-primary" />
+          </div>
+        ) : items.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <Empty>
+              <EmptyIcon>
+                <Rss className="h-8 w-8" />
+              </EmptyIcon>
+              <EmptyTitle>No hay contenido</EmptyTitle>
+              <EmptyDescription>
+                No hay publicaciones para mostrar. Intenta actualizar tus fuentes.
+              </EmptyDescription>
+              <Button variant="outline" onClick={refreshAllSources} className="mt-4">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualizar ahora
+              </Button>
+            </Empty>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {items.map(item => (
+              <FeedCard 
+                key={item.id} 
+                item={item} 
+                compact={settings.compactMode}
+              />
+            ))}
+          </div>
+        )}
+      </ScrollArea>
+    </div>
+  )
+}

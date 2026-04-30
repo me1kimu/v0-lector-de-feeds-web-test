@@ -1,0 +1,56 @@
+{
+  "name": "FeedReader - Lector de Feeds Unificado",
+  "short_name": "FeedReader",
+  "description": "Lector de feeds RSS, Mastodon y Bluesky con soporte PWA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "es",
+  "categories": ["news", "social"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agregar fuente",
+      "short_name": "Agregar",
+      "description": "Agregar una nueva fuente RSS o social",
+      "url": "/?action=add-source"
+    },
+    {
+      "name": "Actualizar feeds",
+      "short_name": "Actualizar",
+      "description": "Actualizar todas las fuentes",
+      "url": "/?action=refresh"
+    }
+  ],
+  "prefer_related_applications": false
+}

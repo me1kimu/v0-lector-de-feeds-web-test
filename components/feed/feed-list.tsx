@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useFeedStore } from '@/lib/store'
 import { FeedCard } from './feed-card'
-import { Empty, EmptyDescription, EmptyIcon, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle, EmptyHeader } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
 import { Rss, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -53,14 +53,16 @@ export function FeedList() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <Empty>
-          <EmptyIcon>
-            <Rss className="h-10 w-10" />
-          </EmptyIcon>
-          <EmptyTitle>Bienvenido a FeedReader</EmptyTitle>
-          <EmptyDescription>
-            Comienza agregando fuentes RSS, Mastodon o Bluesky para ver tu feed unificado.
-          </EmptyDescription>
-          <Button onClick={() => setSettingsOpen(true)} className="mt-4">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Rss className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>Bienvenido a FeedReader</EmptyTitle>
+            <EmptyDescription>
+              Comienza agregando fuentes RSS, Mastodon o Bluesky para ver tu feed unificado.
+            </EmptyDescription>
+          </EmptyHeader>
+          <Button onClick={() => setSettingsOpen(true)}>
             Agregar primera fuente
           </Button>
         </Empty>
@@ -99,14 +101,16 @@ export function FeedList() {
         ) : items.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <Empty>
-              <EmptyIcon>
-                <Rss className="h-8 w-8" />
-              </EmptyIcon>
-              <EmptyTitle>No hay contenido</EmptyTitle>
-              <EmptyDescription>
-                No hay publicaciones para mostrar. Intenta actualizar tus fuentes.
-              </EmptyDescription>
-              <Button variant="outline" onClick={refreshAllSources} className="mt-4">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Rss className="h-6 w-6" />
+                </EmptyMedia>
+                <EmptyTitle>No hay contenido</EmptyTitle>
+                <EmptyDescription>
+                  No hay publicaciones para mostrar. Intenta actualizar tus fuentes.
+                </EmptyDescription>
+              </EmptyHeader>
+              <Button variant="outline" onClick={refreshAllSources}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualizar ahora
               </Button>

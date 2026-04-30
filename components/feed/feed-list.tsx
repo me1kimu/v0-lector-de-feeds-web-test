@@ -7,7 +7,7 @@ import { Empty, EmptyDescription, EmptyMedia, EmptyTitle, EmptyHeader } from '@/
 import { Spinner } from '@/components/ui/spinner'
 import { Rss, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
+
 
 export function FeedList() {
   const { 
@@ -71,9 +71,9 @@ export function FeedList() {
   }
   
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
+      <header className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div>
           <h2 className="text-xl font-semibold text-foreground">{title}</h2>
           <p className="text-sm text-muted-foreground">
@@ -93,7 +93,7 @@ export function FeedList() {
       </header>
       
       {/* Feed */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         {isLoading && items.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <Spinner className="h-8 w-8 text-primary" />
@@ -127,7 +127,7 @@ export function FeedList() {
             ))}
           </div>
         )}
-      </ScrollArea>
+      </div>
     </div>
   )
 }

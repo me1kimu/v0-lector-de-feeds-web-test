@@ -8,23 +8,37 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
-import { Fingerprint, Mail, AlertCircle, Rss } from 'lucide-react'
+import { Fingerprint, AlertCircle, Rss, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { 
-    signInWithPasskey, 
-    isLoading, 
-    error, 
+  const {
+    signInWithEmail,
+    signInWithPasskey,
+    isLoading,
+    error,
     clearError,
     passkeySupported,
     platformAuthAvailable,
   } = useAuth()
-  
+
   const [email, setEmail] = useState('')
-  const [mode, setMode] = useState<'passkey' | 'email'>('passkey')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email || !password) return
+    try {
+      clearError()
+      await signInWithEmail(email, password)
+      router.push('/')
+    } catch {
+      // Error handled by hook
+    }
+  }
 
   const handlePasskeySignIn = async () => {
     try {
@@ -32,7 +46,7 @@ export default function LoginPage() {
       await signInWithPasskey(email || undefined)
       router.push('/')
     } catch {
-      // Error is handled by the hook
+      // Error handled by hook
     }
   }
 
@@ -48,130 +62,98 @@ export default function LoginPage() {
             Accede a tu cuenta de FeedReader
           </CardDescription>
         </CardHeader>
-        
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
 
-          {!passkeySupported && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Tu navegador no soporta passkeys. Por favor usa un navegador moderno.
-              </AlertDescription>
-            </Alert>
-          )}
+        <CardContent>
+          <form onSubmit={handleEmailSignIn} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          {mode === 'passkey' && passkeySupported && (
-            <div className="space-y-4">
-              <Field>
-                <FieldLabel>Email (opcional)</FieldLabel>
-                <Input
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                />
-                <FieldDescription>
-                  Deja vacio para usar cualquier passkey registrada
-                </FieldDescription>
-              </Field>
+            <Field>
+              <FieldLabel>Email</FieldLabel>
+              <Input
+                type="email"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                required
+                autoComplete="email"
+              />
+            </Field>
 
-              <Button
-                onClick={handlePasskeySignIn}
-                disabled={isLoading || !passkeySupported}
-                className="w-full"
-                size="lg"
-              >
-                {isLoading ? (
-                  <Spinner className="mr-2" />
-                ) : (
-                  <Fingerprint className="mr-2 h-5 w-5" />
-                )}
-                {platformAuthAvailable 
-                  ? 'Iniciar con Face ID / Touch ID' 
-                  : 'Iniciar con Passkey'}
-              </Button>
-
+            <Field>
+              <FieldLabel>Contrasena</FieldLabel>
               <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  autoComplete="current-password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </Field>
+
+            <Button
+              type="submit"
+              disabled={isLoading || !email || !password}
+              className="w-full"
+              size="lg"
+            >
+              {isLoading ? <Spinner className="mr-2" /> : null}
+              Iniciar sesion
+            </Button>
+          </form>
+
+          {passkeySupported && (
+            <>
+              <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+                  <span className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    O
-                  </span>
+                  <span className="bg-card px-2 text-muted-foreground">O</span>
                 </div>
               </div>
 
               <Button
                 variant="outline"
-                onClick={() => setMode('email')}
+                onClick={handlePasskeySignIn}
                 disabled={isLoading}
                 className="w-full"
               >
-                <Mail className="mr-2 h-4 w-4" />
-                Usar email y contrasena
-              </Button>
-            </div>
-          )}
-
-          {mode === 'email' && (
-            <div className="space-y-4">
-              <Field>
-                <FieldLabel>Email</FieldLabel>
-                <Input
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  required
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel>Contrasena</FieldLabel>
-                <Input
-                  type="password"
-                  placeholder="********"
-                  disabled={isLoading}
-                />
-              </Field>
-
-              <Button
-                type="submit"
-                disabled={isLoading || !email}
-                className="w-full"
-              >
-                {isLoading && <Spinner className="mr-2" />}
-                Iniciar sesion
-              </Button>
-
-              {passkeySupported && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setMode('passkey')}
-                  disabled={isLoading}
-                  className="w-full"
-                >
+                {isLoading ? (
+                  <Spinner className="mr-2" />
+                ) : (
                   <Fingerprint className="mr-2 h-4 w-4" />
-                  Usar Passkey
-                </Button>
-              )}
-            </div>
+                )}
+                {platformAuthAvailable
+                  ? 'Iniciar con Face ID / Touch ID'
+                  : 'Iniciar con Passkey'}
+              </Button>
+            </>
           )}
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4">
-          <p className="text-sm text-muted-foreground text-center">
+        <CardFooter>
+          <p className="text-sm text-muted-foreground text-center w-full">
             No tienes cuenta?{' '}
-            <Link href="/auth/register" className="text-primary hover:underline">
+            <Link href="/auth/register" className="text-primary hover:underline font-medium">
               Registrate
             </Link>
           </p>

@@ -190,6 +190,44 @@ export function useAuth() {
     }
   }, [supabase.auth])
 
+  // Sign up with email/password
+  const signUpWithEmail = useCallback(async (email: string, password: string, displayName?: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }))
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo:
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+            `${window.location.origin}/auth/callback`,
+          data: { display_name: displayName || email.split('@')[0] },
+        },
+      })
+      if (error) throw error
+      setState(prev => ({ ...prev, isLoading: false }))
+      return { requiresEmailVerification: !data.session }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Registration failed'
+      setState(prev => ({ ...prev, error: message, isLoading: false }))
+      throw error
+    }
+  }, [supabase.auth])
+
+  // Sign in with email/password
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }))
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      setState(prev => ({ ...prev, isLoading: false }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Sign in failed'
+      setState(prev => ({ ...prev, error: message, isLoading: false }))
+      throw error
+    }
+  }, [supabase.auth])
+
   // Sign out
   const signOut = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
@@ -220,6 +258,8 @@ export function useAuth() {
     ...state,
     registerWithPasskey,
     signInWithPasskey,
+    signUpWithEmail,
+    signInWithEmail,
     signOut,
     clearError,
   }

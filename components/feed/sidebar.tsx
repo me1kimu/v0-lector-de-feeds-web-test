@@ -13,7 +13,8 @@ import {
   Plus,
   Layers,
   Twitter,
-  Camera
+  Camera,
+  Sparkles
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -44,9 +45,10 @@ const sourceTypeLabels: Record<SourceType, string> = {
 interface SidebarProps {
   collapsed?: boolean
   onToggleCollapse?: () => void
+  onOpenChat?: () => void
 }
 
-export function Sidebar({ collapsed = false }: SidebarProps) {
+export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
   const { 
     sources, 
     activeFilter, 
@@ -85,6 +87,26 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         {!collapsed && (
           <h1 className="font-semibold text-sidebar-foreground">FeedReader</h1>
         )}
+      </div>
+      
+      {/* AI Assistant Button */}
+      <div className="p-3 border-b border-border">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onOpenChat}
+          className={cn(
+            'w-full justify-start gap-2 bg-gradient-to-r from-primary/10 to-purple-500/10 border-primary/20 hover:border-primary/40 hover:bg-primary/15',
+            collapsed && 'px-0 justify-center'
+          )}
+        >
+          <Sparkles className="h-4 w-4 text-primary" />
+          {!collapsed && (
+            <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent font-medium">
+              Asistente IA
+            </span>
+          )}
+        </Button>
       </div>
       
       {/* Actions */}

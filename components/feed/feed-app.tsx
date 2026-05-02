@@ -8,6 +8,7 @@ import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { FeedList } from './feed-list'
 import { SettingsPanel } from './settings-panel'
+import { FeedChatbot } from './feed-chatbot'
 import { cn } from '@/lib/utils'
 import { Spinner } from '@/components/ui/spinner'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +19,7 @@ export function FeedApp() {
   const { isOnline, isRegistered } = useServiceWorker()
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   
   // Sync auth state with store
@@ -69,7 +71,7 @@ export function FeedApp() {
       
       {/* Sidebar - desktop */}
       <div className="hidden lg:flex h-full">
-        <Sidebar />
+        <Sidebar onOpenChat={() => setChatOpen(true)} />
       </div>
       
       {/* Sidebar - mobile */}
@@ -77,7 +79,7 @@ export function FeedApp() {
         'fixed inset-y-0 left-0 z-50 lg:hidden transition-transform duration-200',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
-        <Sidebar />
+        <Sidebar onOpenChat={() => { setChatOpen(true); setSidebarOpen(false); }} />
       </div>
       
       {/* Main content */}
@@ -98,6 +100,9 @@ export function FeedApp() {
       
       {/* Settings panel */}
       <SettingsPanel />
+      
+      {/* AI Chatbot */}
+      <FeedChatbot open={chatOpen} onOpenChange={setChatOpen} />
       
       {/* Offline indicator */}
       {!isOnline && (

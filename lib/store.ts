@@ -4,6 +4,12 @@ import { create } from 'zustand'
 import type { FeedSource, FeedItem, UserSettings, Notification, SourceType } from './types'
 import * as db from './db'
 
+interface AuthUser {
+  id: string
+  email: string
+  displayName?: string
+}
+
 interface FeedStore {
   // State
   sources: FeedSource[]
@@ -15,8 +21,16 @@ interface FeedStore {
   activeSourceId: string | null
   settingsOpen: boolean
   
+  // Auth state
+  user: AuthUser | null
+  isAuthenticated: boolean
+  
   // Actions
   initialize: () => Promise<void>
+  
+  // Auth
+  setUser: (user: AuthUser | null) => void
+  syncWithCloud: () => Promise<void>
   
   // Sources
   loadSources: () => Promise<void>
@@ -61,6 +75,8 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   activeFilter: 'all',
   activeSourceId: null,
   settingsOpen: false,
+  user: null,
+  isAuthenticated: false,
   
   initialize: async () => {
     set({ isLoading: true })
@@ -73,6 +89,66 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     set({ isLoading: false })
   },
   
+  setUser: (user) => {
+    set({ user, isAuthenticated: !!user })
+    if (user) {
+      // Sync with cloud when user logs in
+      get().syncWithCloud()
+    }
+  },
+  
+  syncWithCloud: async () => {
+    const { user } = get()
+    if (!user) return
+    
+    try {
+      // Fetch sources from cloud
+      const sourcesRes = await fetch('/api/user/sources')
+      if (sourcesRes.ok) {
+        const { sources: cloudSources } = await sourcesRes.json()
+        
+        // Merge cloud sources with local (cloud takes precedence)
+        for (const cloudSource of cloudSources || []) {
+          const localSource: FeedSource = {
+            id: cloudSource.id,
+            type: cloudSource.source_type as SourceType,
+            name: cloudSource.name,
+            url: cloudSource.url,
+            credentials: cloudSource.encrypted_credentials 
+              ? JSON.parse(cloudSource.encrypted_credentials) 
+              : undefined,
+            refreshInterval: cloudSource.refresh_interval,
+            enabled: cloudSource.enabled,
+            lastFetched: cloudSource.last_fetched_at 
+              ? new Date(cloudSource.last_fetched_at).getTime() 
+              : undefined,
+          }
+          await db.addSource(localSource)
+        }
+      }
+      
+      // Fetch settings from cloud
+      const settingsRes = await fetch('/api/user/settings')
+      if (settingsRes.ok) {
+        const { settings: cloudSettings } = await settingsRes.json()
+        if (cloudSettings) {
+          await db.updateSettings({
+            theme: cloudSettings.theme,
+            showExternalMedia: cloudSettings.show_media,
+            notificationsEnabled: cloudSettings.notifications_enabled,
+          })
+        }
+      }
+      
+      // Reload local state
+      await get().loadSources()
+      await get().loadSettings()
+      
+    } catch (error) {
+      console.error('Cloud sync error:', error)
+    }
+  },
+  
   loadSources: async () => {
     const sources = await db.getSources()
     set({ sources })
@@ -80,16 +156,81 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   
   addSource: async (source) => {
     await db.addSource(source)
+    
+    // Sync to cloud if authenticated
+    const { user } = get()
+    if (user) {
+      try {
+        await fetch('/api/user/sources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source_type: source.type,
+            name: source.name,
+            url: source.url,
+            encrypted_credentials: source.credentials 
+              ? JSON.stringify(source.credentials) 
+              : null,
+            refresh_interval: source.refreshInterval,
+            enabled: source.enabled,
+          }),
+        })
+      } catch (error) {
+        console.error('Cloud sync error:', error)
+      }
+    }
+    
     await get().loadSources()
   },
   
   updateSource: async (id, updates) => {
     await db.updateSource(id, updates)
+    
+    // Sync to cloud if authenticated
+    const { user } = get()
+    if (user) {
+      try {
+        await fetch('/api/user/sources', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id,
+            source_type: updates.type,
+            name: updates.name,
+            url: updates.url,
+            encrypted_credentials: updates.credentials 
+              ? JSON.stringify(updates.credentials) 
+              : undefined,
+            refresh_interval: updates.refreshInterval,
+            enabled: updates.enabled,
+            last_fetched_at: updates.lastFetched 
+              ? new Date(updates.lastFetched).toISOString() 
+              : undefined,
+          }),
+        })
+      } catch (error) {
+        console.error('Cloud sync error:', error)
+      }
+    }
+    
     await get().loadSources()
   },
   
   deleteSource: async (id) => {
     await db.deleteSource(id)
+    
+    // Sync to cloud if authenticated
+    const { user } = get()
+    if (user) {
+      try {
+        await fetch(`/api/user/sources?id=${id}`, {
+          method: 'DELETE',
+        })
+      } catch (error) {
+        console.error('Cloud sync error:', error)
+      }
+    }
+    
     await get().loadSources()
     await get().loadItems({ limit: 100 })
   },
@@ -144,6 +285,25 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   
   updateSettings: async (newSettings) => {
     await db.updateSettings(newSettings)
+    
+    // Sync to cloud if authenticated
+    const { user } = get()
+    if (user) {
+      try {
+        await fetch('/api/user/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            theme: newSettings.theme,
+            show_media: newSettings.showExternalMedia,
+            notifications_enabled: newSettings.notificationsEnabled,
+          }),
+        })
+      } catch (error) {
+        console.error('Cloud sync error:', error)
+      }
+    }
+    
     await get().loadSettings()
   },
   
@@ -203,7 +363,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       console.error(`Failed to refresh ${source.name}:`, error)
       await get().addNotification({
         type: 'error',
-        title: 'Error de actualización',
+        title: 'Error de actualizacion',
         message: `No se pudo actualizar ${source.name}`,
         sourceId
       })

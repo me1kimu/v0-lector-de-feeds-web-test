@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useFeedStore } from '@/lib/store'
 import { useServiceWorker } from '@/hooks/use-service-worker'
+import { useAuth } from '@/hooks/use-auth'
 import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { FeedList } from './feed-list'
@@ -13,10 +14,24 @@ import { Badge } from '@/components/ui/badge'
 import { WifiOff } from 'lucide-react'
 
 export function FeedApp() {
-  const { initialize, isLoading, refreshAllSources } = useFeedStore()
+  const { initialize, isLoading, refreshAllSources, setUser } = useFeedStore()
   const { isOnline, isRegistered } = useServiceWorker()
+  const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  
+  // Sync auth state with store
+  useEffect(() => {
+    if (user) {
+      setUser({
+        id: user.id,
+        email: user.email || '',
+        displayName: user.user_metadata?.display_name,
+      })
+    } else {
+      setUser(null)
+    }
+  }, [user, setUser])
   
   useEffect(() => {
     setMounted(true)

@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       timeout: 60000,
       rpId: rpId,
       allowCredentials: allowCredentials.length > 0 ? allowCredentials : undefined,
-      userVerification: 'required' as const,
+      userVerification: 'preferred' as const,
     }
 
     return NextResponse.json(options)

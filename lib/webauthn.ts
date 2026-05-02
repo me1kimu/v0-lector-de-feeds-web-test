@@ -101,16 +101,15 @@ export async function createPasskey(
     },
     pubKeyCredParams: options.pubKeyCredParams,
     timeout: options.timeout || 60000,
-    attestation: options.attestation || 'none',
-    authenticatorSelection: options.authenticatorSelection || {
+    attestation: 'direct',
+    authenticatorSelection: {
       authenticatorAttachment: 'platform',
-      userVerification: 'required',
-      residentKey: 'required',
-      requireResidentKey: true,
+      userVerification: 'preferred',
+      residentKey: 'preferred',
     },
     excludeCredentials: options.excludeCredentials?.map((cred) => ({
       id: base64urlDecode(cred.id),
-      type: cred.type,
+      type: cred.type as PublicKeyCredentialType,
       transports: cred.transports,
     })),
   }

@@ -87,9 +87,8 @@ export async function POST(request: NextRequest) {
       attestation: 'none' as const,
       authenticatorSelection: {
         authenticatorAttachment: 'platform' as const,
-        userVerification: 'required' as const,
-        residentKey: 'required' as const,
-        requireResidentKey: true,
+        userVerification: 'preferred' as const,
+        residentKey: 'preferred' as const,
       },
       excludeCredentials,
     }

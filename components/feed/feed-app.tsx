@@ -83,7 +83,7 @@ export function FeedApp() {
       {/* Main content */}
       <main className="flex-1 flex flex-col min-w-0">
         <Header 
-          showMenuButton 
+          showMenuButton={true}
           onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
         />
         

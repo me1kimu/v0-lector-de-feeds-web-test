@@ -59,10 +59,10 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
   }
   
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-background lg:hidden">
+    <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-background">
       <div className="flex items-center gap-3">
         {showMenuButton && (
-          <Button variant="ghost" size="sm" onClick={onMenuClick}>
+          <Button variant="ghost" size="sm" onClick={onMenuClick} className="lg:hidden">
             <Menu className="h-5 w-5" />
           </Button>
         )}

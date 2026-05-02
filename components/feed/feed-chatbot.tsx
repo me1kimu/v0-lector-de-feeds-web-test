@@ -1,5 +1,6 @@
 'use client'
 
+// AI Chat component for feed summarization
 import { useState, useRef, useEffect } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'

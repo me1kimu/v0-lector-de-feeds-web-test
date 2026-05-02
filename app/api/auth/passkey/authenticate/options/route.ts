@@ -60,11 +60,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Get RP ID - use localhost for development, otherwise use the current hostname
+    const urlHostname = new URL(request.url).hostname
+    const rpId = urlHostname === 'localhost' || urlHostname.includes('127.0.0.1')
+      ? 'localhost'
+      : urlHostname
+
     // Return authentication options
     const options = {
       challenge: challengeBase64,
       timeout: 60000,
-      rpId: new URL(request.url).hostname,
+      rpId: rpId,
       allowCredentials: allowCredentials.length > 0 ? allowCredentials : undefined,
       userVerification: 'required' as const,
     }

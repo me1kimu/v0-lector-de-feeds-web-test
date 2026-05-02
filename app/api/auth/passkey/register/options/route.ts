@@ -61,12 +61,18 @@ export async function POST(request: NextRequest) {
       }))
     }
 
+    // Get RP ID - use localhost for development, otherwise extract registrable domain
+    const urlHostname = new URL(request.url).hostname
+    const rpId = urlHostname === 'localhost' || urlHostname.includes('127.0.0.1')
+      ? 'localhost'
+      : urlHostname // For vusercontent.net or production domains
+    
     // Return registration options
     const options = {
       challenge: challengeBase64,
       rp: {
         name: 'FeedReader',
-        id: new URL(request.url).hostname,
+        id: rpId,
       },
       user: {
         id: userIdBase64,

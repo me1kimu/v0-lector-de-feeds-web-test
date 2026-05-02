@@ -105,38 +105,60 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       // Fetch sources from cloud
       const sourcesRes = await fetch('/api/user/sources')
       if (sourcesRes.ok) {
-        const { sources: cloudSources } = await sourcesRes.json()
-        
-        // Merge cloud sources with local (cloud takes precedence)
-        for (const cloudSource of cloudSources || []) {
-          const localSource: FeedSource = {
-            id: cloudSource.id,
-            type: cloudSource.source_type as SourceType,
-            name: cloudSource.name,
-            url: cloudSource.url,
-            credentials: cloudSource.encrypted_credentials 
-              ? JSON.parse(cloudSource.encrypted_credentials) 
-              : undefined,
-            refreshInterval: cloudSource.refresh_interval,
-            enabled: cloudSource.enabled,
-            lastFetched: cloudSource.last_fetched_at 
-              ? new Date(cloudSource.last_fetched_at).getTime() 
-              : undefined,
+        const text = await sourcesRes.text()
+        if (text && text.trim()) {
+          try {
+            const { sources: cloudSources } = JSON.parse(text)
+            
+            // Merge cloud sources with local (cloud takes precedence)
+            for (const cloudSource of cloudSources || []) {
+              let credentials = undefined
+              if (cloudSource.encrypted_credentials) {
+                try {
+                  credentials = JSON.parse(cloudSource.encrypted_credentials)
+                } catch {
+                  // Credentials might be already an object or invalid
+                  credentials = cloudSource.encrypted_credentials
+                }
+              }
+              
+              const localSource: FeedSource = {
+                id: cloudSource.id,
+                type: cloudSource.source_type as SourceType,
+                name: cloudSource.name,
+                url: cloudSource.url,
+                credentials,
+                refreshInterval: cloudSource.refresh_interval,
+                enabled: cloudSource.enabled,
+                lastFetched: cloudSource.last_fetched_at 
+                  ? new Date(cloudSource.last_fetched_at).getTime() 
+                  : undefined,
+              }
+              await db.addSource(localSource)
+            }
+          } catch (parseError) {
+            console.error('Failed to parse sources response:', parseError)
           }
-          await db.addSource(localSource)
         }
       }
       
       // Fetch settings from cloud
       const settingsRes = await fetch('/api/user/settings')
       if (settingsRes.ok) {
-        const { settings: cloudSettings } = await settingsRes.json()
-        if (cloudSettings) {
-          await db.updateSettings({
-            theme: cloudSettings.theme,
-            showExternalMedia: cloudSettings.show_media,
-            notificationsEnabled: cloudSettings.notifications_enabled,
-          })
+        const text = await settingsRes.text()
+        if (text && text.trim()) {
+          try {
+            const { settings: cloudSettings } = JSON.parse(text)
+            if (cloudSettings) {
+              await db.updateSettings({
+                theme: cloudSettings.theme,
+                showExternalMedia: cloudSettings.show_media,
+                notificationsEnabled: cloudSettings.notifications_enabled,
+              })
+            }
+          } catch (parseError) {
+            console.error('Failed to parse settings response:', parseError)
+          }
         }
       }
       

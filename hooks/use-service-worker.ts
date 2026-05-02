@@ -28,7 +28,22 @@ export function useServiceWorker() {
     
     if (!isSupported) return
     
-    // Register service worker
+    // Skip service worker registration in development to avoid caching issues
+    const isDev = process.env.NODE_ENV === 'development' || 
+                  window.location.hostname.includes('vusercontent.net') ||
+                  window.location.hostname.includes('localhost')
+    
+    if (isDev) {
+      // Unregister any existing service workers in development
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister()
+        })
+      })
+      return
+    }
+    
+    // Register service worker only in production
     navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => {

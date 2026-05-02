@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'feedreader-v1'
+const CACHE_NAME = 'feedreader-v2'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -41,6 +41,12 @@ self.addEventListener('fetch', (event) => {
   
   // Skip API requests - always go to network
   if (request.url.includes('/api/')) {
+    event.respondWith(fetch(request))
+    return
+  }
+  
+  // Skip Next.js chunks and static assets - never cache these to avoid stale module errors
+  if (request.url.includes('/_next/') || request.url.includes('/chunks/')) {
     event.respondWith(fetch(request))
     return
   }

@@ -33,6 +33,8 @@ export interface FeedItem {
   title?: string
   content: string
   contentHtml?: string
+  fullContent?: string // Full article content (HTML)
+  fullContentLoaded?: boolean // Whether full content has been fetched
   author: {
     name: string
     handle?: string

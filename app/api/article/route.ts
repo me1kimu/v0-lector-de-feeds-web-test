@@ -1,0 +1,163 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+// Simple article content extractor
+// Attempts to extract main article content from a web page
+
+export async function POST(request: NextRequest) {
+  try {
+    const { url } = await request.json() as { url: string }
+    
+    if (!url) {
+      return NextResponse.json({ error: 'URL is required' }, { status: 400 })
+    }
+    
+    // Fetch the article page
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; FeedReader/1.0)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch article: ${response.status}`)
+    }
+    
+    const html = await response.text()
+    
+    // Extract article content using common patterns
+    const content = extractArticleContent(html)
+    
+    return NextResponse.json({ 
+      content,
+      url,
+      fetchedAt: Date.now()
+    })
+  } catch (error) {
+    console.error('Article fetch error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch article', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
+  }
+}
+
+function extractArticleContent(html: string): string {
+  // Try to find article content using common selectors/patterns
+  
+  // Remove script and style tags
+  let cleaned = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+  
+  // Try to extract from common article containers
+  const articlePatterns = [
+    // JSON-LD structured data (best source)
+    /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i,
+    // Common article tags
+    /<article[^>]*>([\s\S]*?)<\/article>/i,
+    /<main[^>]*>([\s\S]*?)<\/main>/i,
+    // Common class patterns
+    /<div[^>]*class="[^"]*(?:article-content|article-body|post-content|entry-content|content-body|story-body|article__body)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+    // ID patterns
+    /<div[^>]*id="[^"]*(?:article|content|main-content|post-body)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+  ]
+  
+  // Try JSON-LD first for articleBody
+  const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)
+  if (jsonLdMatch) {
+    for (const match of jsonLdMatch) {
+      try {
+        const jsonContent = match.replace(/<script[^>]*>|<\/script>/gi, '')
+        const data = JSON.parse(jsonContent)
+        const articleBody = findArticleBody(data)
+        if (articleBody && articleBody.length > 200) {
+          return formatAsHtml(articleBody)
+        }
+      } catch {
+        // Not valid JSON or no articleBody
+      }
+    }
+  }
+  
+  // Try article patterns
+  for (const pattern of articlePatterns.slice(1)) {
+    const match = cleaned.match(pattern)
+    if (match && match[1]) {
+      const content = cleanArticleHtml(match[1])
+      if (content.length > 200) {
+        return content
+      }
+    }
+  }
+  
+  // Fall back to extracting all paragraphs
+  const paragraphs = cleaned.match(/<p[^>]*>([\s\S]*?)<\/p>/gi)
+  if (paragraphs && paragraphs.length > 0) {
+    // Filter out short paragraphs (likely navigation/footer)
+    const goodParagraphs = paragraphs
+      .map(p => p.replace(/<[^>]+>/g, '').trim())
+      .filter(p => p.length > 50)
+    
+    if (goodParagraphs.length >= 2) {
+      return goodParagraphs.map(p => `<p>${p}</p>`).join('\n')
+    }
+  }
+  
+  return ''
+}
+
+function findArticleBody(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  
+  const obj = data as Record<string, unknown>
+  
+  // Direct articleBody
+  if (typeof obj.articleBody === 'string') {
+    return obj.articleBody
+  }
+  
+  // Check @graph array (common in WordPress)
+  if (Array.isArray(obj['@graph'])) {
+    for (const item of obj['@graph']) {
+      const body = findArticleBody(item)
+      if (body) return body
+    }
+  }
+  
+  // Recursively check nested objects
+  for (const value of Object.values(obj)) {
+    if (typeof value === 'object' && value !== null) {
+      const body = findArticleBody(value)
+      if (body) return body
+    }
+  }
+  
+  return null
+}
+
+function formatAsHtml(text: string): string {
+  // Split into paragraphs and wrap
+  const paragraphs = text.split(/\n\n+/).filter(p => p.trim())
+  return paragraphs.map(p => `<p>${p.trim()}</p>`).join('\n')
+}
+
+function cleanArticleHtml(html: string): string {
+  // Remove common non-content elements
+  let cleaned = html
+    // Remove social sharing buttons
+    .replace(/<div[^>]*class="[^"]*(?:share|social|related|comments|sidebar|ad-|advertisement)[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    // Remove nav elements
+    .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+    // Remove aside elements
+    .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '')
+    // Remove figure captions but keep figures
+    .replace(/<figcaption[^>]*>[\s\S]*?<\/figcaption>/gi, '')
+    // Clean up excessive whitespace
+    .replace(/\s+/g, ' ')
+    .trim()
+  
+  return cleaned
+}

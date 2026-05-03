@@ -7,7 +7,10 @@ const parser = new Parser({
     item: [
       ['media:content', 'mediaContent'],
       ['media:thumbnail', 'mediaThumbnail'],
-      ['enclosure', 'enclosure']
+      ['enclosure', 'enclosure'],
+      ['content:encoded', 'contentEncoded'],
+      ['dc:creator', 'dcCreator'],
+      ['description', 'description']
     ]
   }
 })
@@ -51,15 +54,38 @@ export async function POST(request: NextRequest) {
         }
       }
       
+      // Get full content - prefer content:encoded over content over description
+      const rawItem = item as Record<string, unknown>
+      const fullContentHtml = (rawItem.contentEncoded as string) || item.content || item['content:encoded'] || ''
+      const descriptionHtml = (rawItem.description as string) || ''
+      
+      // Use full content if available, otherwise use description
+      const contentHtml = fullContentHtml || descriptionHtml
+      
       // Extract images from content
-      const contentHtml = item.content || item['content:encoded'] || ''
       const imgMatches = contentHtml.match(/<img[^>]+src="([^"]+)"[^>]*>/gi)
       if (imgMatches && media.length === 0) {
-        const srcMatch = imgMatches[0].match(/src="([^"]+)"/)
-        if (srcMatch) {
-          media.push({ type: 'image', url: srcMatch[1] })
+        // Extract all images, not just the first
+        for (const imgMatch of imgMatches.slice(0, 4)) {
+          const srcMatch = imgMatch.match(/src="([^"]+)"/)
+          if (srcMatch && !media.some(m => m.url === srcMatch[1])) {
+            media.push({ type: 'image', url: srcMatch[1] })
+          }
         }
       }
+      
+      // Create a snippet for preview (first ~300 chars of plain text)
+      const plainText = contentHtml
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+      const snippet = plainText.length > 300 
+        ? plainText.substring(0, 300).trim() + '...' 
+        : plainText
+      
+      // Determine if this has full content or just a summary
+      const hasFullContent = fullContentHtml.length > 500 || 
+        (descriptionHtml.length > 500 && !fullContentHtml)
       
       return {
         id: `${source.id}-${item.guid || item.link || item.title || Date.now()}`,
@@ -67,10 +93,12 @@ export async function POST(request: NextRequest) {
         sourceType: 'rss',
         sourceName: source.name || feed.title || 'RSS Feed',
         title: item.title,
-        content: item.contentSnippet || item.content || '',
-        contentHtml: item.content || item['content:encoded'],
+        content: snippet || item.contentSnippet || '',
+        contentHtml: hasFullContent ? undefined : contentHtml, // Only include HTML for short content
+        fullContent: hasFullContent ? contentHtml : undefined, // Full content stored separately
+        fullContentLoaded: hasFullContent, // Mark if full content is already available
         author: {
-          name: item.creator || item.author || feed.title || 'Desconocido',
+          name: (rawItem.dcCreator as string) || item.creator || item.author || feed.title || 'Desconocido',
           url: feed.link
         },
         url: item.link,

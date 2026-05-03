@@ -17,7 +17,10 @@ import {
   MoreHorizontal,
   ImageOff,
   Twitter,
-  Camera
+  Camera,
+  ChevronDown,
+  ChevronUp,
+  Loader2
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -62,9 +65,53 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
   const [imageError, setImageError] = useState<Record<string, boolean>>({})
   const [liked, setLiked] = useState(item.interactions?.liked ?? false)
   const [reposted, setReposted] = useState(item.interactions?.reposted ?? false)
+  const [expanded, setExpanded] = useState(false)
+  const [fullContent, setFullContent] = useState<string | null>(item.fullContent || null)
+  const [loadingContent, setLoadingContent] = useState(false)
   
   const source = sources.find(s => s.id === item.sourceId)
   const showMedia = settings.showExternalMedia && item.media && item.media.length > 0
+  
+  // Check if this item has or can load full content
+  const hasFullContent = !!item.fullContent || !!fullContent
+  const canLoadFullContent = item.sourceType === 'rss' && item.url && !item.fullContentLoaded && !hasFullContent
+  
+  const handleExpand = async () => {
+    if (expanded) {
+      setExpanded(false)
+      return
+    }
+    
+    // If we already have full content, just expand
+    if (hasFullContent) {
+      setExpanded(true)
+      return
+    }
+    
+    // If we can fetch full content, do it
+    if (canLoadFullContent && item.url) {
+      setLoadingContent(true)
+      try {
+        const response = await fetch('/api/article', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: item.url })
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.content) {
+            setFullContent(data.content)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch full article:', error)
+      } finally {
+        setLoadingContent(false)
+      }
+      setExpanded(true)
+    }
+  }
   
   const handleLike = async () => {
     if (!source?.credentials) return
@@ -203,10 +250,16 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
         <div 
           className={cn(
             'mt-2 text-foreground leading-relaxed',
-            compact && 'line-clamp-3'
+            compact && !expanded && 'line-clamp-3'
           )}
         >
-          {item.contentHtml ? (
+          {expanded && (fullContent || item.fullContent) ? (
+            // Show full content when expanded
+            <div 
+              dangerouslySetInnerHTML={{ __html: fullContent || item.fullContent || '' }} 
+              className="prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-p:text-foreground prose-p:my-2 prose-span:text-foreground prose-div:text-foreground prose-headings:text-foreground prose-headings:mt-4 prose-headings:mb-2 prose-img:rounded-lg prose-img:my-4 prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-foreground"
+            />
+          ) : item.contentHtml ? (
             <div 
               dangerouslySetInnerHTML={{ __html: item.contentHtml }} 
               className="prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-p:text-foreground prose-p:m-0 prose-span:text-foreground prose-div:text-foreground [&_*]:text-foreground"
@@ -215,6 +268,34 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
             <p className="whitespace-pre-wrap">{item.content}</p>
           )}
         </div>
+        
+        {/* Expand/Collapse button for RSS articles */}
+        {(hasFullContent || canLoadFullContent) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleExpand}
+            disabled={loadingContent}
+            className="mt-2 text-muted-foreground hover:text-foreground"
+          >
+            {loadingContent ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Cargando articulo...
+              </>
+            ) : expanded ? (
+              <>
+                <ChevronUp className="h-4 w-4 mr-2" />
+                Mostrar menos
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Leer articulo completo
+              </>
+            )}
+          </Button>
+        )}
         
         {/* Media */}
         {showMedia && (

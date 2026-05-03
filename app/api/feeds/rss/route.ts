@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
       }
       
       // Get full content - prefer content:encoded over content over description
-      const rawItem = item as Record<string, unknown>
       const fullContentHtml = (rawItem.contentEncoded as string) || item.content || item['content:encoded'] || ''
       const descriptionHtml = (rawItem.description as string) || ''
       

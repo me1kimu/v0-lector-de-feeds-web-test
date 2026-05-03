@@ -10,7 +10,6 @@ const parser = new Parser({
       ['enclosure', 'enclosure'],
       ['content:encoded', 'contentEncoded'],
       ['dc:creator', 'dcCreator'],
-      ['description', 'description']
     ]
   }
 })
@@ -56,7 +55,8 @@ export async function POST(request: NextRequest) {
       
       // Get full content - prefer content:encoded over content over description
       const fullContentHtml = (rawItem.contentEncoded as string) || item.content || item['content:encoded'] || ''
-      const descriptionHtml = (rawItem.description as string) || ''
+      // item.summary is rss-parser's mapped field for <description>
+      const descriptionHtml = (item as Record<string, unknown>).summary as string || item.contentSnippet || ''
       
       // Use full content if available, otherwise use description
       const contentHtml = fullContentHtml || descriptionHtml

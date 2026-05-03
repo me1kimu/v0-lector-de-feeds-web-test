@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
       const media: MediaAttachment[] = []
       
       // Extract media from various RSS formats
-      const rawItem = item as Record<string, unknown>
-      if (rawItem.mediaContent) {
-        const mc = rawItem.mediaContent as Record<string, unknown>
+      const itemRecord = item as Record<string, unknown>
+      if (itemRecord.mediaContent) {
+        const mc = itemRecord.mediaContent as Record<string, unknown>
         const attrs = (mc.$ || mc) as Record<string, string>
         if (attrs.url) {
           media.push({
@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      if (rawItem.enclosure) {
-        const enc = rawItem.enclosure as Record<string, string>
+      if (itemRecord.enclosure) {
+        const enc = itemRecord.enclosure as Record<string, string>
         if (enc.url && enc.type?.startsWith('image')) {
           media.push({ type: 'image', url: enc.url })
         } else if (enc.url && enc.type?.startsWith('video')) {
@@ -54,9 +54,9 @@ export async function POST(request: NextRequest) {
       }
       
       // Get full content - prefer content:encoded over content over description
-      const fullContentHtml = (rawItem.contentEncoded as string) || item.content || item['content:encoded'] || ''
-      // item.summary is rss-parser's mapped field for <description>
-      const descriptionHtml = (item as Record<string, unknown>).summary as string || item.contentSnippet || ''
+      const fullContentHtml = (itemRecord.contentEncoded as string) || item.content || item['content:encoded'] || ''
+      // Use summary or contentSnippet for description
+      const descriptionHtml = (itemRecord.summary as string) || item.contentSnippet || ''
       
       // Use full content if available, otherwise use description
       const contentHtml = fullContentHtml || descriptionHtml
@@ -93,11 +93,11 @@ export async function POST(request: NextRequest) {
         sourceName: source.name || feed.title || 'RSS Feed',
         title: item.title,
         content: snippet || item.contentSnippet || '',
-        contentHtml: hasFullContent ? undefined : contentHtml, // Only include HTML for short content
-        fullContent: hasFullContent ? contentHtml : undefined, // Full content stored separately
-        fullContentLoaded: hasFullContent, // Mark if full content is already available
+        contentHtml: hasFullContent ? undefined : contentHtml,
+        fullContent: hasFullContent ? contentHtml : undefined,
+        fullContentLoaded: hasFullContent,
         author: {
-          name: (rawItem.dcCreator as string) || item.creator || item.author || feed.title || 'Desconocido',
+          name: (itemRecord.dcCreator as string) || item.creator || item.author || feed.title || 'Desconocido',
           url: feed.link
         },
         url: item.link,

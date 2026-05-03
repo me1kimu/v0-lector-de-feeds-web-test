@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error'
     const stack = error instanceof Error ? error.stack : ''
-    console.log('[v0] RSS feed error for URL', url, msg, stack, error)
+logger.error('RSS', `RSS feed error for URL ${url}`, error)
     return NextResponse.json(
       { error: 'Failed to fetch RSS feed', details: msg },
       { status: 500 }

@@ -31,9 +31,6 @@ export async function POST(req: Request) {
     publishedAt: string
   }>; useOllama?: boolean } = await req.json()
 
-  // Determine which model to use
-  const isOllamaEnabled = useOllama && process.env.OLLAMA_ENDPOINT
-  
   // Build system prompt with feed context
   let systemPrompt = `Eres un asistente inteligente que ayuda a los usuarios a entender y resumir su feed de noticias y redes sociales.
   
@@ -56,16 +53,30 @@ Contenido: ${item.content.substring(0, 500)}${item.content.length > 500 ? '...' 
     systemPrompt += `\n\nAqui estan las ultimas ${feedItems.length} publicaciones del feed del usuario:\n\n${feedContext}`
   }
 
-  // Select model based on preference
+  // Default to Ollama (local, no quota limits)
+  // Fallback to Gemini if Ollama is not available and explicitly requested
   let model
-  if (isOllamaEnabled) {
+  
+  try {
     const ollama = createOllamaClient()
     // Use Mistral model (recommended: efficient, multilingual, 7B)
-    // Other options: llama2, neural-chat, dolphin-mixtral
     model = ollama('mistral')
-  } else {
-    // Default to Gemini Flash
-    model = google('gemini-2.0-flash')
+  } catch (error) {
+    console.error('[v0] Ollama unavailable, falling back to Gemini:', error)
+    // Fallback to Gemini if Ollama fails
+    try {
+      model = google('gemini-2.0-flash')
+    } catch (geminiError) {
+      console.error('[v0] Both Ollama and Gemini failed:', geminiError)
+      // Return error response
+      return new Response(
+        JSON.stringify({ 
+          error: 'No hay modelos disponibles. Por favor instala Ollama o asegúrate de que Gemini tiene cuota disponible.',
+          details: geminiError instanceof Error ? geminiError.message : 'Error desconocido'
+        }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
   }
 
   const result = streamText({

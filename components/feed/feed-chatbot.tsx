@@ -41,7 +41,7 @@ interface FeedChatbotProps {
 export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
   const { items } = useFeedStore()
   const [input, setInput] = useState('')
-  const [useOllama, setUseOllama] = useState(false)
+  const [useOllama, setUseOllama] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [ollamaAvailable, setOllamaAvailable] = useState(false)
   
@@ -163,11 +163,6 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gemini">
-                  <span className="flex items-center gap-2">
-                    ✨ Gemini Flash (Cloud)
-                  </span>
-                </SelectItem>
                 <SelectItem 
                   value="ollama" 
                   disabled={!ollamaAvailable}
@@ -181,6 +176,11 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
                     ) : (
                       'Mistral (Local) - No disponible'
                     )}
+                  </span>
+                </SelectItem>
+                <SelectItem value="gemini">
+                  <span className="flex items-center gap-2">
+                    ✨ Gemini Flash (Cloud)
                   </span>
                 </SelectItem>
               </SelectContent>

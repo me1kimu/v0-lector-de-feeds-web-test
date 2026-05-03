@@ -4,6 +4,13 @@ import {
   streamText,
   UIMessage,
 } from 'ai'
+import { createOpenAI } from '@ai-sdk/openai'
+
+// Create GitHub Models provider using OpenAI-compatible API
+const github = createOpenAI({
+  baseURL: 'https://models.inference.ai.azure.com',
+  apiKey: process.env.GITHUB_TOKEN,
+})
 
 export const maxDuration = 30
 
@@ -39,7 +46,7 @@ Contenido: ${item.content.substring(0, 500)}${item.content.length > 500 ? '...' 
   }
 
   const result = streamText({
-    model: 'openai/gpt-4o-mini',
+    model: github('gpt-4o-mini'),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     abortSignal: req.signal,

@@ -257,9 +257,6 @@ function AddSourceForm({ onAdd, onCancel }: AddSourceFormProps) {
             </Field>
           </>
         )}
-            </Field>
-          </>
-        )}
         
         {type === 'twitter' && (
           <Field>

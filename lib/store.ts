@@ -434,7 +434,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       await get().updateSource(sourceId, { lastFetched: Date.now() })
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Error desconocido'
-    console.log(`[v0] Error refreshing ${source?.type || 'unknown'} feed:`, errorMsg, error)
+logger.error('Store', `Error refreshing ${source?.type || 'unknown'} feed`, error)
     await get().addNotification({
       type: 'error',
       title: 'Error de actualizacion',

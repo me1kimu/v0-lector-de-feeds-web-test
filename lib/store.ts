@@ -376,17 +376,25 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
         body: JSON.stringify({ source })
       })
       
-      if (!response.ok) throw new Error('Failed to fetch feed')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.details || errorData.error || `HTTP ${response.status}`)
+      }
       
-      const { items } = await response.json()
-      await get().addItems(items)
+      const data = await response.json()
+      const items = data.items || []
+      
+      if (items.length > 0) {
+        await get().addItems(items)
+      }
       await get().updateSource(sourceId, { lastFetched: Date.now() })
     } catch (error) {
-      console.error(`Failed to refresh ${source.name}:`, error)
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+      console.error(`Failed to refresh ${source.type} feed "${source.name}":`, errorMessage)
       await get().addNotification({
         type: 'error',
         title: 'Error de actualizacion',
-        message: `No se pudo actualizar ${source.name}`,
+        message: `${source.name}: ${errorMessage}`,
         sourceId
       })
     }

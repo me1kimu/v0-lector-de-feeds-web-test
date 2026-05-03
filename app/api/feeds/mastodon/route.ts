@@ -42,7 +42,18 @@ export async function POST(request: NextRequest) {
       statusId?: string
     }
     
-    const instance = source.credentials?.instance || source.url
+    // Get instance URL and ensure it has https://
+    let instance = source.credentials?.instance || source.url || ''
+    instance = instance.trim()
+    
+    // Remove trailing slashes
+    instance = instance.replace(/\/+$/, '')
+    
+    // Add https:// if not present
+    if (instance && !instance.startsWith('http://') && !instance.startsWith('https://')) {
+      instance = `https://${instance}`
+    }
+    
     const accessToken = source.credentials?.accessToken
     
     if (!instance) {
@@ -50,7 +61,8 @@ export async function POST(request: NextRequest) {
     }
     
     const headers: HeadersInit = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
     }
     
     if (accessToken) {
@@ -73,14 +85,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, status: result })
     }
     
-    // Fetch timeline
+    // Fetch timeline - use public timeline if no access token
     const endpoint = accessToken ? '/api/v1/timelines/home' : '/api/v1/timelines/public'
     const url = `${instance}${endpoint}?limit=40`
     
-    const response = await fetch(url, { headers })
+    console.log('[v0] Fetching Mastodon timeline:', url)
+    
+    const response = await fetch(url, { 
+      headers,
+      next: { revalidate: 0 }
+    })
     
     if (!response.ok) {
-      throw new Error(`Mastodon API error: ${response.status}`)
+      const errorText = await response.text().catch(() => 'Unknown error')
+      console.error('[v0] Mastodon API error:', response.status, errorText)
+      throw new Error(`Mastodon API error: ${response.status} - ${errorText}`)
     }
     
     const statuses: MastodonStatus[] = await response.json()

@@ -687,8 +687,8 @@ export function SettingsPanel() {
                 </div>
               </Field>
               
-              <Field className="flex items-center justify-between">
-                <div>
+              <Field className="flex items-center justify-between gap-4">
+                <div className="flex-1">
                   <FieldLabel className="mb-0">Modo compacto</FieldLabel>
                   <FieldDescription>
                     Muestra más publicaciones con menos espacio
@@ -697,11 +697,12 @@ export function SettingsPanel() {
                 <Switch 
                   checked={settings.compactMode}
                   onCheckedChange={(compactMode) => updateSettings({ compactMode })}
+                  className="flex-shrink-0"
                 />
               </Field>
               
-              <Field className="flex items-center justify-between">
-                <div>
+              <Field className="flex items-center justify-between gap-4">
+                <div className="flex-1">
                   <FieldLabel className="mb-0 flex items-center gap-2">
                     <Image className="h-4 w-4" />
                     Mostrar multimedia
@@ -713,6 +714,7 @@ export function SettingsPanel() {
                 <Switch 
                   checked={settings.showExternalMedia}
                   onCheckedChange={(showExternalMedia) => updateSettings({ showExternalMedia })}
+                  className="flex-shrink-0"
                 />
               </Field>
             </FieldGroup>
@@ -721,8 +723,8 @@ export function SettingsPanel() {
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="mt-4 space-y-6">
             <FieldGroup>
-              <Field className="flex items-center justify-between">
-                <div>
+              <Field className="flex items-center justify-between gap-4">
+                <div className="flex-1">
                   <FieldLabel className="mb-0 flex items-center gap-2">
                     <Bell className="h-4 w-4" />
                     Notificaciones
@@ -734,6 +736,7 @@ export function SettingsPanel() {
                 <Switch 
                   checked={settings.notificationsEnabled}
                   onCheckedChange={(notificationsEnabled) => updateSettings({ notificationsEnabled })}
+                  className="flex-shrink-0"
                 />
               </Field>
               

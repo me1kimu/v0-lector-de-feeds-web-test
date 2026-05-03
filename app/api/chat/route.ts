@@ -7,6 +7,14 @@ import {
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 
+// Create OpenRouter provider for Gemma 4 (free model)
+const createOpenRouterClient = () => {
+  return createOpenAI({
+    baseURL: 'https://openrouter.io/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
+  })
+}
+
 // Create Google Gemini provider - automatically uses GOOGLE_GENERATIVE_AI_API_KEY env var
 const google = createGoogleGenerativeAI()
 
@@ -53,29 +61,39 @@ Contenido: ${item.content.substring(0, 500)}${item.content.length > 500 ? '...' 
     systemPrompt += `\n\nAqui estan las ultimas ${feedItems.length} publicaciones del feed del usuario:\n\n${feedContext}`
   }
 
-  // Default to Ollama (local, no quota limits)
-  // Fallback to Gemini if Ollama is not available and explicitly requested
+  // Default to OpenRouter Gemma 4 (free model with no quota limits)
+  // Fallback: Ollama -> Gemini
   let model
   
   try {
-    const ollama = createOllamaClient()
-    // Use Mistral model (recommended: efficient, multilingual, 7B)
-    model = ollama('mistral')
+    // Try OpenRouter first (primary)
+    if (process.env.OPENROUTER_API_KEY) {
+      const openrouter = createOpenRouterClient()
+      model = openrouter('google/gemma-4-31b-it:free')
+    } else {
+      throw new Error('OPENROUTER_API_KEY not configured')
+    }
   } catch (error) {
-    console.error('[v0] Ollama unavailable, falling back to Gemini:', error)
-    // Fallback to Gemini if Ollama fails
+    console.error('[v0] OpenRouter unavailable, trying Ollama:', error)
     try {
-      model = google('gemini-2.0-flash')
-    } catch (geminiError) {
-      console.error('[v0] Both Ollama and Gemini failed:', geminiError)
-      // Return error response
-      return new Response(
-        JSON.stringify({ 
-          error: 'No hay modelos disponibles. Por favor instala Ollama o asegúrate de que Gemini tiene cuota disponible.',
-          details: geminiError instanceof Error ? geminiError.message : 'Error desconocido'
-        }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } }
-      )
+      // Fallback to Ollama
+      const ollama = createOllamaClient()
+      model = ollama('mistral')
+    } catch (ollamaError) {
+      console.error('[v0] Ollama unavailable, falling back to Gemini:', ollamaError)
+      try {
+        // Final fallback to Gemini
+        model = google('gemini-2.0-flash')
+      } catch (geminiError) {
+        console.error('[v0] All models failed:', geminiError)
+        return new Response(
+          JSON.stringify({ 
+            error: 'No hay modelos disponibles. Por favor configura OPENROUTER_API_KEY, instala Ollama o asegúrate de que Gemini tiene cuota disponible.',
+            details: geminiError instanceof Error ? geminiError.message : 'Error desconocido'
+          }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
     }
   }
 

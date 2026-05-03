@@ -41,7 +41,7 @@ interface FeedChatbotProps {
 export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
   const { items } = useFeedStore()
   const [input, setInput] = useState('')
-  const [useOllama, setUseOllama] = useState(true)
+  const [model, setModel] = useState<'openrouter' | 'ollama' | 'gemini'>('openrouter')
   const scrollRef = useRef<HTMLDivElement>(null)
   const [ollamaAvailable, setOllamaAvailable] = useState(false)
   
@@ -87,7 +87,7 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
         body: {
           messages,
           feedItems: latestItems,
-          useOllama: useOllama && ollamaAvailable
+          useOllama: model === 'ollama'
         }
       })
     }),
@@ -156,13 +156,18 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
           <div className="mt-3 flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Modelo:</span>
             <Select 
-              value={useOllama && ollamaAvailable ? 'ollama' : 'gemini'}
-              onValueChange={(value) => setUseOllama(value === 'ollama')}
+              value={model}
+              onValueChange={(value) => setModel(value as 'openrouter' | 'ollama' | 'gemini')}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-56">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="openrouter">
+                  <span className="flex items-center gap-2">
+                    ✨ Gemma 4 (OpenRouter - Gratis)
+                  </span>
+                </SelectItem>
                 <SelectItem 
                   value="ollama" 
                   disabled={!ollamaAvailable}
@@ -186,12 +191,17 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
               </SelectContent>
             </Select>
           </div>
-          {ollamaAvailable && useOllama && (
+          {model === 'openrouter' && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Usando Gemma 4 de OpenRouter (modelo gratuito)
+            </p>
+          )}
+          {model === 'ollama' && ollamaAvailable && (
             <p className="text-xs text-muted-foreground mt-2">
               Usando modelo Mistral local en http://localhost:11434
             </p>
           )}
-          {!ollamaAvailable && (
+          {!ollamaAvailable && model !== 'openrouter' && (
             <p className="text-xs text-muted-foreground mt-2">
               💡 Instala Ollama y descarga Mistral para usar modelos locales
             </p>

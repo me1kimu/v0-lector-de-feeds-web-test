@@ -20,6 +20,7 @@ interface FeedStore {
   activeFilter: SourceType | 'all'
   activeSourceId: string | null
   settingsOpen: boolean
+  notificationsOpen: boolean
   
   // Auth state
   user: AuthUser | null
@@ -48,16 +49,19 @@ interface FeedStore {
   loadSettings: () => Promise<void>
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>
   setSettingsOpen: (open: boolean) => void
+  setNotificationsOpen: (open: boolean) => void
   
   // Notifications
   loadNotifications: () => Promise<void>
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => Promise<void>
   markNotificationRead: (id: string) => Promise<void>
   markAllNotificationsRead: () => Promise<void>
+  clearNotification: (id: string) => Promise<void>
   
   // Refresh
   refreshSource: (sourceId: string) => Promise<void>
   refreshAllSources: () => Promise<void>
+  refreshWithContext: () => Promise<void>
 }
 
 export const useFeedStore = create<FeedStore>((set, get) => ({
@@ -75,6 +79,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   activeFilter: 'all',
   activeSourceId: null,
   settingsOpen: false,
+  notificationsOpen: false,
   user: null,
   isAuthenticated: false,
   
@@ -166,9 +171,10 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       await get().loadSources()
       await get().loadSettings()
       
-    } catch (error) {
-      console.error('Cloud sync error:', error)
-    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+logger.error('Store', 'Error syncing with cloud', error)
+  }
   },
   
   loadSources: async () => {
@@ -333,6 +339,10 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     set({ settingsOpen: open })
   },
   
+  setNotificationsOpen: (open) => {
+    set({ notificationsOpen: open })
+  },
+  
   loadNotifications: async () => {
     const notifications = await db.getNotifications()
     set({ notifications })
@@ -365,6 +375,12 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     await get().loadNotifications()
   },
   
+  clearNotification: async (id) => {
+    set(state => ({
+      notifications: state.notifications.filter(n => n.id !== id)
+    }))
+  },
+  
   refreshSource: async (sourceId) => {
     const source = get().sources.find(s => s.id === sourceId)
     if (!source || !source.enabled) return
@@ -384,20 +400,48 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       const data = await response.json()
       const items = data.items || []
       
+      // Sync items to database
+      if (items.length > 0) {
+        const syncResponse = await fetch('/api/feeds/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source,
+            items,
+            updateExisting: true
+          })
+        })
+        
+        if (!syncResponse.ok) {
+          const syncError = await syncResponse.json()
+          console.error('[Store] Sync error:', syncError)
+          throw new Error(`Sync failed: ${syncError.details}`)
+        }
+        
+        const syncData = await syncResponse.json()
+        console.log('[Store] Sync result:', {
+          added: syncData.data.itemsAdded,
+          updated: syncData.data.itemsUpdated,
+          skipped: syncData.data.itemsSkipped
+        })
+      }
+      
+      // Add items to local store
       if (items.length > 0) {
         await get().addItems(items)
       }
+      
       await get().updateSource(sourceId, { lastFetched: Date.now() })
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-      console.error(`Failed to refresh ${source.type} feed "${source.name}":`, errorMessage)
-      await get().addNotification({
-        type: 'error',
-        title: 'Error de actualizacion',
-        message: `${source.name}: ${errorMessage}`,
-        sourceId
-      })
-    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Error desconocido'
+logger.error('Store', `Error refreshing ${source?.type || 'unknown'} feed`, error)
+    await get().addNotification({
+      type: 'error',
+      title: 'Error de actualizacion',
+      message: `${source?.name || 'Feed'}: ${errorMsg}`,
+      sourceId
+    })
+  }
   },
   
   refreshAllSources: async () => {
@@ -405,5 +449,22 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     const sources = get().sources.filter(s => s.enabled)
     await Promise.allSettled(sources.map(s => get().refreshSource(s.id)))
     set({ isLoading: false })
-  }
+  },
+  
+  refreshWithContext: async () => {
+    const activeSourceId = get().activeSourceId
+    
+    if (activeSourceId) {
+      // Refresh only the selected source
+      set({ isLoading: true })
+      try {
+        await get().refreshSource(activeSourceId)
+      } finally {
+        set({ isLoading: false })
+      }
+    } else {
+      // Refresh all sources when no specific source is selected
+      await get().refreshAllSources()
+    }
+  },
 }))

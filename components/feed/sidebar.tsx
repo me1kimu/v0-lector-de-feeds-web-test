@@ -14,7 +14,8 @@ import {
   Layers,
   Twitter,
   Camera,
-  Sparkles
+  Sparkles,
+  Play
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +25,7 @@ const sourceTypeIcons: Record<SourceType, React.ReactNode> = {
   rss: <Rss className="h-4 w-4" />,
   mastodon: <AtSign className="h-4 w-4" />,
   bluesky: <CloudSun className="h-4 w-4" />,
+  youtube: <Play className="h-4 w-4" />,
   pixelfed: <Layers className="h-4 w-4" />,
   instagram: <Camera className="h-4 w-4" />,
   twitter: <Twitter className="h-4 w-4" />,
@@ -35,6 +37,7 @@ const sourceTypeLabels: Record<SourceType, string> = {
   rss: 'RSS',
   mastodon: 'Mastodon',
   bluesky: 'Bluesky',
+  youtube: 'YouTube',
   pixelfed: 'Pixelfed',
   instagram: 'Instagram',
   twitter: 'Twitter',
@@ -58,7 +61,9 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
     setActiveFilter, 
     setActiveSourceId,
     setSettingsOpen,
-    refreshAllSources
+    setNotificationsOpen,
+    refreshAllSources,
+    refreshWithContext
   } = useFeedStore()
   
   const unreadCount = notifications.filter(n => !n.read).length
@@ -112,14 +117,19 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
       {/* Actions */}
       <div className={cn('flex gap-2 p-3 border-b border-border', collapsed ? 'flex-col' : '')}>
         <Button 
-          variant="outline" 
+          variant={activeSourceId ? 'default' : 'outline'}
           size="sm" 
-          onClick={refreshAllSources}
+          onClick={refreshWithContext}
           disabled={isLoading}
           className={cn('flex-1', collapsed && 'w-full px-0')}
+          title={activeSourceId ? 'Actualizar fuente seleccionada' : 'Actualizar todos los feeds'}
         >
           <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin', !collapsed && 'mr-2')} />
-          {!collapsed && 'Actualizar'}
+          {!collapsed && (
+            <span className="flex-1 text-left">
+              {activeSourceId ? 'Actualizar fuente' : 'Actualizar todo'}
+            </span>
+          )}
         </Button>
         <Button 
           variant="outline" 
@@ -212,7 +222,7 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
       {/* Footer */}
       <div className="border-t border-border p-2">
         <button
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => setNotificationsOpen(true)}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
         >
           <Bell className="h-4 w-4" />

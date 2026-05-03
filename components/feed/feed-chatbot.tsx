@@ -22,8 +22,16 @@ import {
   User, 
   Sparkles, 
   X,
-  Loader2
+  Loader2,
+  Zap
 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface FeedChatbotProps {
   open: boolean
@@ -33,7 +41,27 @@ interface FeedChatbotProps {
 export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
   const { items } = useFeedStore()
   const [input, setInput] = useState('')
+  const [model, setModel] = useState<'openrouter' | 'ollama' | 'gemini'>('openrouter')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [ollamaAvailable, setOllamaAvailable] = useState(false)
+  
+  // Check if Ollama is available
+  useEffect(() => {
+    const checkOllama = async () => {
+      try {
+        const response = await fetch('http://localhost:11434/api/tags', {
+          method: 'GET',
+        })
+        setOllamaAvailable(response.ok)
+      } catch {
+        setOllamaAvailable(false)
+      }
+    }
+    
+    if (open) {
+      checkOllama()
+    }
+  }, [open])
   
   // Get latest feed items to provide context
   const latestItems = items
@@ -58,7 +86,8 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
       prepareSendMessagesRequest: ({ messages }) => ({
         body: {
           messages,
-          feedItems: latestItems
+          feedItems: latestItems,
+          useOllama: model === 'ollama'
         }
       })
     }),
@@ -110,10 +139,73 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
                 onClick={handleClearChat}
                 className="text-muted-foreground"
               >
-                Limpiar
+                <X className="h-4 w-4" />
               </Button>
             )}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              className="h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
+          
+          {/* Model selector */}
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Modelo:</span>
+            <Select 
+              value={model}
+              onValueChange={(value) => setModel(value as 'openrouter' | 'ollama' | 'gemini')}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openrouter">
+                  <span className="flex items-center gap-2">
+                    ✨ Gemma 4 (OpenRouter - Gratis)
+                  </span>
+                </SelectItem>
+                <SelectItem 
+                  value="ollama" 
+                  disabled={!ollamaAvailable}
+                >
+                  <span className="flex items-center gap-2">
+                    {ollamaAvailable ? (
+                      <>
+                        <Zap className="h-4 w-4" />
+                        Mistral (Local)
+                      </>
+                    ) : (
+                      'Mistral (Local) - No disponible'
+                    )}
+                  </span>
+                </SelectItem>
+                <SelectItem value="gemini">
+                  <span className="flex items-center gap-2">
+                    ✨ Gemini Flash (Cloud)
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {model === 'openrouter' && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Usando Gemma 4 de OpenRouter (modelo gratuito)
+            </p>
+          )}
+          {model === 'ollama' && ollamaAvailable && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Usando modelo Mistral local en http://localhost:11434
+            </p>
+          )}
+          {!ollamaAvailable && model !== 'openrouter' && (
+            <p className="text-xs text-muted-foreground mt-2">
+              💡 Instala Ollama y descarga Mistral para usar modelos locales
+            </p>
+          )}
         </SheetHeader>
         
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>

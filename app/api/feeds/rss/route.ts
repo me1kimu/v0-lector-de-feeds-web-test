@@ -10,7 +10,6 @@ const parser = new Parser({
       ['enclosure', 'enclosure'],
       ['content:encoded', 'contentEncoded'],
       ['dc:creator', 'dcCreator'],
-      ['description', 'description']
     ]
   }
 })
@@ -29,9 +28,9 @@ export async function POST(request: NextRequest) {
       const media: MediaAttachment[] = []
       
       // Extract media from various RSS formats
-      const rawItem = item as Record<string, unknown>
-      if (rawItem.mediaContent) {
-        const mc = rawItem.mediaContent as Record<string, unknown>
+      const itemRecord = item as Record<string, unknown>
+      if (itemRecord.mediaContent) {
+        const mc = itemRecord.mediaContent as Record<string, unknown>
         const attrs = (mc.$ || mc) as Record<string, string>
         if (attrs.url) {
           media.push({
@@ -43,8 +42,8 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      if (rawItem.enclosure) {
-        const enc = rawItem.enclosure as Record<string, string>
+      if (itemRecord.enclosure) {
+        const enc = itemRecord.enclosure as Record<string, string>
         if (enc.url && enc.type?.startsWith('image')) {
           media.push({ type: 'image', url: enc.url })
         } else if (enc.url && enc.type?.startsWith('video')) {
@@ -55,9 +54,9 @@ export async function POST(request: NextRequest) {
       }
       
       // Get full content - prefer content:encoded over content over description
-      const rawItem = item as Record<string, unknown>
-      const fullContentHtml = (rawItem.contentEncoded as string) || item.content || item['content:encoded'] || ''
-      const descriptionHtml = (rawItem.description as string) || ''
+      const fullContentHtml = (itemRecord.contentEncoded as string) || item.content || item['content:encoded'] || ''
+      // Use summary or contentSnippet for description
+      const descriptionHtml = (itemRecord.summary as string) || item.contentSnippet || ''
       
       // Use full content if available, otherwise use description
       const contentHtml = fullContentHtml || descriptionHtml
@@ -94,11 +93,11 @@ export async function POST(request: NextRequest) {
         sourceName: source.name || feed.title || 'RSS Feed',
         title: item.title,
         content: snippet || item.contentSnippet || '',
-        contentHtml: hasFullContent ? undefined : contentHtml, // Only include HTML for short content
-        fullContent: hasFullContent ? contentHtml : undefined, // Full content stored separately
-        fullContentLoaded: hasFullContent, // Mark if full content is already available
+        contentHtml: hasFullContent ? undefined : contentHtml,
+        fullContent: hasFullContent ? contentHtml : undefined,
+        fullContentLoaded: hasFullContent,
         author: {
-          name: (rawItem.dcCreator as string) || item.creator || item.author || feed.title || 'Desconocido',
+          name: (itemRecord.dcCreator as string) || item.creator || item.author || feed.title || 'Desconocido',
           url: feed.link
         },
         url: item.link,
@@ -110,9 +109,11 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ items, feedTitle: feed.title })
   } catch (error) {
-    console.error('RSS fetch error:', error)
+    const msg = error instanceof Error ? error.message : 'Unknown error'
+    const stack = error instanceof Error ? error.stack : ''
+logger.error('RSS', `RSS feed error for URL ${url}`, error)
     return NextResponse.json(
-      { error: 'Failed to fetch RSS feed', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to fetch RSS feed', details: msg },
       { status: 500 }
     )
   }

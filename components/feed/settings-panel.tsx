@@ -61,13 +61,15 @@ import {
   Pencil,
   Check,
   X,
-  RefreshCw
+  RefreshCw,
+  Play
 } from 'lucide-react'
 
 const sourceTypeOptions: { value: SourceType; label: string; icon: React.ReactNode; description?: string }[] = [
   { value: 'rss', label: 'RSS Feed', icon: <Rss className="h-4 w-4" /> },
   { value: 'mastodon', label: 'Mastodon', icon: <AtSign className="h-4 w-4" /> },
   { value: 'bluesky', label: 'Bluesky', icon: <CloudSun className="h-4 w-4" /> },
+  { value: 'youtube', label: 'YouTube', icon: <Play className="h-4 w-4" />, description: 'Canal o usuario' },
   { value: 'twitter', label: 'Twitter/X', icon: <Twitter className="h-4 w-4" />, description: 'Solo perfiles públicos' },
   { value: 'instagram', label: 'Instagram', icon: <Camera className="h-4 w-4" />, description: 'Solo perfiles públicos' },
 ]
@@ -238,6 +240,23 @@ function AddSourceForm({ onAdd, onCancel }: AddSourceFormProps) {
             </Field>
           </>
         )}
+
+        {type === 'youtube' && (
+          <>
+            <Field>
+              <FieldLabel>Canal de YouTube</FieldLabel>
+              <Input 
+                value={url} 
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://youtube.com/@username o UC..."
+                required
+              />
+              <FieldDescription>
+                Puedes usar: @username, URL del canal, o ID del canal (UC...)
+              </FieldDescription>
+            </Field>
+          </>
+        )}
         
         {type === 'twitter' && (
           <Field>
@@ -315,6 +334,7 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
     rss: <Rss className="h-4 w-4" />,
     mastodon: <AtSign className="h-4 w-4" />,
     bluesky: <CloudSun className="h-4 w-4" />,
+    youtube: <Play className="h-4 w-4" />,
     pixelfed: <Layers className="h-4 w-4" />,
     instagram: <Camera className="h-4 w-4" />,
     twitter: <Twitter className="h-4 w-4" />,
@@ -326,8 +346,8 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
     ? source.credentials?.instance
     : (source.type === 'twitter' || source.type === 'instagram')
       ? source.credentials?.handle ? `@${source.credentials.handle}` : source.url
-      : source.type === 'bluesky'
-        ? source.credentials?.handle
+      : (source.type === 'bluesky' || source.type === 'youtube')
+        ? source.credentials?.handle || source.url
         : source.url
 
   const handleSave = () => {
@@ -483,6 +503,20 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
                   onChange={(e) => setCredentials({ ...credentials, handle: e.target.value })}
                   placeholder={source.type === 'twitter' ? 'elonmusk' : 'instagram'}
                 />
+              </Field>
+            )}
+
+            {source.type === 'youtube' && (
+              <Field>
+                <FieldLabel>Canal de YouTube</FieldLabel>
+                <Input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://youtube.com/@username o UC..."
+                />
+                <FieldDescription>
+                  Puedes usar: @username, URL del canal, o ID del canal (UC...)
+                </FieldDescription>
               </Field>
             )}
 
@@ -653,8 +687,8 @@ export function SettingsPanel() {
                 </div>
               </Field>
               
-              <Field className="flex items-center justify-between">
-                <div>
+              <Field className="flex items-center justify-between gap-4">
+                <div className="flex-1">
                   <FieldLabel className="mb-0">Modo compacto</FieldLabel>
                   <FieldDescription>
                     Muestra más publicaciones con menos espacio
@@ -663,11 +697,12 @@ export function SettingsPanel() {
                 <Switch 
                   checked={settings.compactMode}
                   onCheckedChange={(compactMode) => updateSettings({ compactMode })}
+                  className="flex-shrink-0"
                 />
               </Field>
               
-              <Field className="flex items-center justify-between">
-                <div>
+              <Field className="flex items-center justify-between gap-4">
+                <div className="flex-1">
                   <FieldLabel className="mb-0 flex items-center gap-2">
                     <Image className="h-4 w-4" />
                     Mostrar multimedia
@@ -679,6 +714,7 @@ export function SettingsPanel() {
                 <Switch 
                   checked={settings.showExternalMedia}
                   onCheckedChange={(showExternalMedia) => updateSettings({ showExternalMedia })}
+                  className="flex-shrink-0"
                 />
               </Field>
             </FieldGroup>
@@ -687,8 +723,8 @@ export function SettingsPanel() {
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="mt-4 space-y-6">
             <FieldGroup>
-              <Field className="flex items-center justify-between">
-                <div>
+              <Field className="flex items-center justify-between gap-4">
+                <div className="flex-1">
                   <FieldLabel className="mb-0 flex items-center gap-2">
                     <Bell className="h-4 w-4" />
                     Notificaciones
@@ -700,6 +736,7 @@ export function SettingsPanel() {
                 <Switch 
                   checked={settings.notificationsEnabled}
                   onCheckedChange={(notificationsEnabled) => updateSettings({ notificationsEnabled })}
+                  className="flex-shrink-0"
                 />
               </Field>
               

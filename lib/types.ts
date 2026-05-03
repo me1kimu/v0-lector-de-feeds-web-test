@@ -1,4 +1,4 @@
-export type SourceType = 'rss' | 'mastodon' | 'bluesky' | 'pixelfed' | 'instagram' | 'twitter' | 'inkbunny' | 'finance'
+export type SourceType = 'rss' | 'mastodon' | 'bluesky' | 'pixelfed' | 'instagram' | 'twitter' | 'inkbunny' | 'finance' | 'youtube'
 
 export interface FeedSource {
   id: string
@@ -20,6 +20,8 @@ export interface SourceCredentials {
   // Bluesky
   handle?: string
   appPassword?: string
+  // YouTube
+  channelId?: string
   // Generic API
   apiKey?: string
   apiSecret?: string

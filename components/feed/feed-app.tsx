@@ -8,6 +8,7 @@ import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { FeedList } from './feed-list'
 import { SettingsPanel } from './settings-panel'
+import { NotificationsPanel } from './notifications-panel'
 import { FeedChatbot } from './feed-chatbot'
 import { cn } from '@/lib/utils'
 import { Spinner } from '@/components/ui/spinner'
@@ -15,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { WifiOff } from 'lucide-react'
 
 export function FeedApp() {
-  const { initialize, isLoading, refreshAllSources, setUser } = useFeedStore()
+  const { initialize, isLoading, refreshAllSources, setUser, settingsOpen, notificationsOpen, setSettingsOpen, setNotificationsOpen } = useFeedStore()
   const { isOnline, isRegistered } = useServiceWorker()
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -100,6 +101,9 @@ export function FeedApp() {
       
       {/* Settings panel */}
       <SettingsPanel />
+      
+      {/* Notifications panel */}
+      <NotificationsPanel open={notificationsOpen} onOpenChange={setNotificationsOpen} />
       
       {/* AI Chatbot */}
       <FeedChatbot open={chatOpen} onOpenChange={setChatOpen} />

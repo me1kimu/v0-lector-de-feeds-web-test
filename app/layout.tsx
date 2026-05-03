@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { LoggerProvider } from '@/components/logger-provider'
+import { LogMonitor } from '@/components/log-monitor'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -47,7 +49,9 @@ export default function RootLayout({
   return (
     <html lang="es" className="bg-background" suppressHydrationWarning>
       <body className="font-sans antialiased">
+        <LoggerProvider />
         {children}
+        {process.env.NODE_ENV === 'development' && <LogMonitor />}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

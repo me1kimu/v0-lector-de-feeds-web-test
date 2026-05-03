@@ -61,6 +61,7 @@ interface FeedStore {
   // Refresh
   refreshSource: (sourceId: string) => Promise<void>
   refreshAllSources: () => Promise<void>
+  refreshWithContext: () => Promise<void>
 }
 
 export const useFeedStore = create<FeedStore>((set, get) => ({
@@ -447,5 +448,22 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     const sources = get().sources.filter(s => s.enabled)
     await Promise.allSettled(sources.map(s => get().refreshSource(s.id)))
     set({ isLoading: false })
-  }
+  },
+  
+  refreshWithContext: async () => {
+    const activeSourceId = get().activeSourceId
+    
+    if (activeSourceId) {
+      // Refresh only the selected source
+      set({ isLoading: true })
+      try {
+        await get().refreshSource(activeSourceId)
+      } finally {
+        set({ isLoading: false })
+      }
+    } else {
+      // Refresh all sources when no specific source is selected
+      await get().refreshAllSources()
+    }
+  },
 }))

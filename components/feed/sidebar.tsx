@@ -62,7 +62,8 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
     setActiveSourceId,
     setSettingsOpen,
     setNotificationsOpen,
-    refreshAllSources
+    refreshAllSources,
+    refreshWithContext
   } = useFeedStore()
   
   const unreadCount = notifications.filter(n => !n.read).length
@@ -116,14 +117,19 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
       {/* Actions */}
       <div className={cn('flex gap-2 p-3 border-b border-border', collapsed ? 'flex-col' : '')}>
         <Button 
-          variant="outline" 
+          variant={activeSourceId ? 'default' : 'outline'}
           size="sm" 
-          onClick={refreshAllSources}
+          onClick={refreshWithContext}
           disabled={isLoading}
           className={cn('flex-1', collapsed && 'w-full px-0')}
+          title={activeSourceId ? 'Actualizar fuente seleccionada' : 'Actualizar todos los feeds'}
         >
           <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin', !collapsed && 'mr-2')} />
-          {!collapsed && 'Actualizar'}
+          {!collapsed && (
+            <span className="flex-1 text-left">
+              {activeSourceId ? 'Actualizar fuente' : 'Actualizar todo'}
+            </span>
+          )}
         </Button>
         <Button 
           variant="outline" 

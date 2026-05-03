@@ -158,6 +158,26 @@ function AddSourceForm({ onAdd, onCancel }: AddSourceFormProps) {
             </Field>
             
             <Field>
+              <FieldLabel>Tipo de timeline</FieldLabel>
+              <Select
+                value={credentials.timelineType || 'local'}
+                onValueChange={(value) => setCredentials({ ...credentials, timelineType: value as 'home' | 'local' | 'public' })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="local">Local (solo esta instancia)</SelectItem>
+                  <SelectItem value="public">Publica (federada)</SelectItem>
+                  <SelectItem value="home">Inicio (requiere token)</SelectItem>
+                </SelectContent>
+              </Select>
+              <FieldDescription>
+                Local muestra solo publicaciones de esta instancia, sin contenido federado
+              </FieldDescription>
+            </Field>
+            
+            <Field>
               <FieldLabel>Token de acceso (opcional)</FieldLabel>
               <div className="flex gap-2">
                 <Input 
@@ -176,7 +196,7 @@ function AddSourceForm({ onAdd, onCancel }: AddSourceFormProps) {
                 </Button>
               </div>
               <FieldDescription>
-                Necesario para ver tu línea de tiempo personal y dar likes/compartir
+                Solo necesario para timeline de Inicio o para dar likes/compartir
               </FieldDescription>
             </Field>
           </>
@@ -390,6 +410,25 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
                   />
                 </Field>
                 <Field>
+                  <FieldLabel>Tipo de timeline</FieldLabel>
+                  <Select
+                    value={credentials.timelineType || 'public'}
+                    onValueChange={(value) => setCredentials({ ...credentials, timelineType: value as 'home' | 'local' | 'public' })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="local">Local (solo esta instancia)</SelectItem>
+                      <SelectItem value="public">Publica (federada)</SelectItem>
+                      <SelectItem value="home">Inicio (requiere token)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription>
+                    Local muestra solo publicaciones de esta instancia
+                  </FieldDescription>
+                </Field>
+                <Field>
                   <FieldLabel>Token de acceso (opcional)</FieldLabel>
                   <div className="flex gap-2">
                     <Input
@@ -402,6 +441,9 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
                       {showCredentials ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
+                  <FieldDescription>
+                    Solo necesario para timeline de Inicio o interacciones
+                  </FieldDescription>
                 </Field>
               </>
             )}

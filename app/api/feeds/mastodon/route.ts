@@ -85,11 +85,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, status: result })
     }
     
-    // Fetch timeline - use public timeline if no access token
-    const endpoint = accessToken ? '/api/v1/timelines/home' : '/api/v1/timelines/public'
-    const url = `${instance}${endpoint}?limit=40`
+    // Determine which timeline to fetch based on credentials
+    const timelineType = source.credentials?.timelineType || 'public'
+    let endpoint: string
+    let queryParams = 'limit=40'
     
-    console.log('[v0] Fetching Mastodon timeline:', url)
+    if (timelineType === 'home' && accessToken) {
+      // Authenticated home timeline
+      endpoint = '/api/v1/timelines/home'
+    } else if (timelineType === 'local') {
+      // Local instance timeline (no federation)
+      endpoint = '/api/v1/timelines/public'
+      queryParams += '&local=true'
+    } else {
+      // Public federated timeline (default)
+      endpoint = '/api/v1/timelines/public'
+    }
+    
+    const url = `${instance}${endpoint}?${queryParams}`
     
     const response = await fetch(url, { 
       headers,

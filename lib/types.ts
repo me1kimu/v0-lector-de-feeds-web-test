@@ -16,6 +16,7 @@ export interface SourceCredentials {
   // Mastodon
   instance?: string
   accessToken?: string
+  timelineType?: 'home' | 'local' | 'public' // home = authenticated, local = instance only, public = federated
   // Bluesky
   handle?: string
   appPassword?: string

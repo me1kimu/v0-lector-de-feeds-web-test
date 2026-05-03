@@ -4,12 +4,11 @@ import {
   streamText,
   UIMessage,
 } from 'ai'
-import { createOpenAI } from '@ai-sdk/openai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 
-// Create GitHub Models provider using OpenAI-compatible API
-const github = createOpenAI({
-  baseURL: 'https://models.inference.ai.azure.com',
-  apiKey: process.env.GITHUB_TOKEN,
+// Create Google Gemini provider
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GEMINI_API_KEY,
 })
 
 export const maxDuration = 30
@@ -46,7 +45,7 @@ Contenido: ${item.content.substring(0, 500)}${item.content.length > 500 ? '...' 
   }
 
   const result = streamText({
-    model: github('gpt-4o-mini'),
+    model: google('gemini-2.0-flash'),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     abortSignal: req.signal,

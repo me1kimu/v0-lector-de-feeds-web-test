@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     const stack = error instanceof Error ? error.stack : ''
-    console.log('[v0] FeedSync API Error:', message, stack, error)
+logger.error('FeedSync', 'FeedSync API Error', error)
 
     return NextResponse.json(
       {

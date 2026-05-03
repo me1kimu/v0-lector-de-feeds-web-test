@@ -20,6 +20,7 @@ interface FeedStore {
   activeFilter: SourceType | 'all'
   activeSourceId: string | null
   settingsOpen: boolean
+  notificationsOpen: boolean
   
   // Auth state
   user: AuthUser | null
@@ -48,12 +49,14 @@ interface FeedStore {
   loadSettings: () => Promise<void>
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>
   setSettingsOpen: (open: boolean) => void
+  setNotificationsOpen: (open: boolean) => void
   
   // Notifications
   loadNotifications: () => Promise<void>
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => Promise<void>
   markNotificationRead: (id: string) => Promise<void>
   markAllNotificationsRead: () => Promise<void>
+  clearNotification: (id: string) => Promise<void>
   
   // Refresh
   refreshSource: (sourceId: string) => Promise<void>
@@ -75,6 +78,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   activeFilter: 'all',
   activeSourceId: null,
   settingsOpen: false,
+  notificationsOpen: false,
   user: null,
   isAuthenticated: false,
   
@@ -333,6 +337,10 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     set({ settingsOpen: open })
   },
   
+  setNotificationsOpen: (open) => {
+    set({ notificationsOpen: open })
+  },
+  
   loadNotifications: async () => {
     const notifications = await db.getNotifications()
     set({ notifications })
@@ -363,6 +371,12 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   markAllNotificationsRead: async () => {
     await db.markAllNotificationsRead()
     await get().loadNotifications()
+  },
+  
+  clearNotification: async (id) => {
+    set(state => ({
+      notifications: state.notifications.filter(n => n.id !== id)
+    }))
   },
   
   refreshSource: async (sourceId) => {

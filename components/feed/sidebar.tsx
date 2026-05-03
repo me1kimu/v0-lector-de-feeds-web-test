@@ -61,6 +61,7 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
     setActiveFilter, 
     setActiveSourceId,
     setSettingsOpen,
+    setNotificationsOpen,
     refreshAllSources
   } = useFeedStore()
   
@@ -215,7 +216,7 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
       {/* Footer */}
       <div className="border-t border-border p-2">
         <button
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => setNotificationsOpen(true)}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
         >
           <Bell className="h-4 w-4" />

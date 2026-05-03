@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
@@ -58,7 +57,11 @@ import {
   Eye,
   EyeOff,
   Twitter,
-  Camera
+  Camera,
+  Pencil,
+  Check,
+  X,
+  RefreshCw
 } from 'lucide-react'
 
 const sourceTypeOptions: { value: SourceType; label: string; icon: React.ReactNode; description?: string }[] = [
@@ -281,9 +284,14 @@ interface SourceItemProps {
 }
 
 function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
-  const [expanded, setExpanded] = useState(false)
-  
-  const icon = {
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(source.name)
+  const [url, setUrl] = useState(source.url || '')
+  const [refreshInterval, setRefreshInterval] = useState(source.refreshInterval)
+  const [credentials, setCredentials] = useState<SourceCredentials>(source.credentials || {})
+  const [showCredentials, setShowCredentials] = useState(false)
+
+  const icon: Record<SourceType, React.ReactNode> = {
     rss: <Rss className="h-4 w-4" />,
     mastodon: <AtSign className="h-4 w-4" />,
     bluesky: <CloudSun className="h-4 w-4" />,
@@ -293,55 +301,172 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
     inkbunny: <Layers className="h-4 w-4" />,
     finance: <Layers className="h-4 w-4" />
   }
-  
+
+  const subtitle = source.type === 'mastodon'
+    ? source.credentials?.instance
+    : (source.type === 'twitter' || source.type === 'instagram')
+      ? source.credentials?.handle ? `@${source.credentials.handle}` : source.url
+      : source.type === 'bluesky'
+        ? source.credentials?.handle
+        : source.url
+
+  const handleSave = () => {
+    onUpdate(source.id, {
+      name,
+      url: source.type === 'mastodon' ? credentials.instance || url : url,
+      refreshInterval,
+      credentials: Object.keys(credentials).length > 0 ? credentials : undefined,
+    })
+    setEditing(false)
+  }
+
+  const handleCancel = () => {
+    setName(source.name)
+    setUrl(source.url || '')
+    setRefreshInterval(source.refreshInterval)
+    setCredentials(source.credentials || {})
+    setEditing(false)
+  }
+
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="p-4 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+      {/* Header row */}
+      <CardHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-secondary">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-secondary flex-shrink-0">
             {icon[source.type]}
           </div>
           <div className="flex-1 min-w-0">
             <CardTitle className="text-base truncate">{source.name}</CardTitle>
-            <CardDescription className="text-sm truncate">
-              {source.type === 'mastodon' ? source.credentials?.instance : source.url}
-            </CardDescription>
+            {subtitle && (
+              <CardDescription className="text-xs truncate">{subtitle}</CardDescription>
+            )}
           </div>
-          <Switch 
-            checked={source.enabled} 
-            onCheckedChange={(enabled) => onUpdate(source.id, { enabled })}
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <Switch
+              checked={source.enabled}
+              onCheckedChange={(enabled) => onUpdate(source.id, { enabled })}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => editing ? handleCancel() : setEditing(true)}
+            >
+              {editing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       </CardHeader>
-      
-      {expanded && (
-        <CardContent className="p-4 pt-0 border-t border-border mt-0">
+
+      {/* Edit form */}
+      {editing && (
+        <CardContent className="p-4 pt-0 border-t border-border">
           <FieldGroup className="mt-4">
+            <Field>
+              <FieldLabel>Nombre</FieldLabel>
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+
+            {source.type === 'rss' && (
+              <Field>
+                <FieldLabel>URL del Feed</FieldLabel>
+                <Input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://example.com/feed.xml"
+                />
+              </Field>
+            )}
+
+            {source.type === 'mastodon' && (
+              <>
+                <Field>
+                  <FieldLabel>Instancia</FieldLabel>
+                  <Input
+                    value={credentials.instance || ''}
+                    onChange={(e) => setCredentials({ ...credentials, instance: e.target.value })}
+                    placeholder="https://mastodon.social"
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel>Token de acceso (opcional)</FieldLabel>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showCredentials ? 'text' : 'password'}
+                      value={credentials.accessToken || ''}
+                      onChange={(e) => setCredentials({ ...credentials, accessToken: e.target.value })}
+                      placeholder="Tu token de acceso"
+                    />
+                    <Button type="button" variant="outline" size="icon" onClick={() => setShowCredentials(!showCredentials)}>
+                      {showCredentials ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </Field>
+              </>
+            )}
+
+            {source.type === 'bluesky' && (
+              <>
+                <Field>
+                  <FieldLabel>Handle</FieldLabel>
+                  <Input
+                    value={credentials.handle || ''}
+                    onChange={(e) => setCredentials({ ...credentials, handle: e.target.value })}
+                    placeholder="usuario.bsky.social"
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel>App Password</FieldLabel>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showCredentials ? 'text' : 'password'}
+                      value={credentials.appPassword || ''}
+                      onChange={(e) => setCredentials({ ...credentials, appPassword: e.target.value })}
+                      placeholder="xxxx-xxxx-xxxx-xxxx"
+                    />
+                    <Button type="button" variant="outline" size="icon" onClick={() => setShowCredentials(!showCredentials)}>
+                      {showCredentials ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </Field>
+              </>
+            )}
+
+            {(source.type === 'twitter' || source.type === 'instagram') && (
+              <Field>
+                <FieldLabel>Nombre de usuario</FieldLabel>
+                <Input
+                  value={credentials.handle || ''}
+                  onChange={(e) => setCredentials({ ...credentials, handle: e.target.value })}
+                  placeholder={source.type === 'twitter' ? 'elonmusk' : 'instagram'}
+                />
+              </Field>
+            )}
+
             <Field>
               <FieldLabel>Intervalo de actualización</FieldLabel>
               <div className="flex items-center gap-4">
-                <Slider 
-                  value={[source.refreshInterval]} 
-                  onValueChange={([v]) => onUpdate(source.id, { refreshInterval: v })}
+                <Slider
+                  value={[refreshInterval]}
+                  onValueChange={([v]) => setRefreshInterval(v)}
                   min={1}
                   max={60}
                   step={1}
                   className="flex-1"
                 />
-                <span className="text-sm text-muted-foreground w-16">
-                  {source.refreshInterval} min
-                </span>
+                <span className="text-sm text-muted-foreground w-16">{refreshInterval} min</span>
               </div>
             </Field>
-            
+
             {source.lastFetched && (
-              <div className="text-sm text-muted-foreground">
-                Última actualización: {new Date(source.lastFetched).toLocaleString('es')}
-              </div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <RefreshCw className="h-3 w-3" />
+                Actualizado: {new Date(source.lastFetched).toLocaleString('es')}
+              </p>
             )}
-            
-            <div className="flex justify-end pt-2">
+
+            <div className="flex items-center justify-between pt-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
@@ -364,6 +489,16 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleCancel}>
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={handleSave}>
+                  <Check className="h-4 w-4 mr-2" />
+                  Guardar
+                </Button>
+              </div>
             </div>
           </FieldGroup>
         </CardContent>

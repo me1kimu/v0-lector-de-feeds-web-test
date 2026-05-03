@@ -384,9 +384,37 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       const data = await response.json()
       const items = data.items || []
       
+      // Sync items to database
+      if (items.length > 0) {
+        const syncResponse = await fetch('/api/feeds/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source,
+            items,
+            updateExisting: true
+          })
+        })
+        
+        if (!syncResponse.ok) {
+          const syncError = await syncResponse.json()
+          console.error('[Store] Sync error:', syncError)
+          throw new Error(`Sync failed: ${syncError.details}`)
+        }
+        
+        const syncData = await syncResponse.json()
+        console.log('[Store] Sync result:', {
+          added: syncData.data.itemsAdded,
+          updated: syncData.data.itemsUpdated,
+          skipped: syncData.data.itemsSkipped
+        })
+      }
+      
+      // Add items to local store
       if (items.length > 0) {
         await get().addItems(items)
       }
+      
       await get().updateSource(sourceId, { lastFetched: Date.now() })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido'

@@ -173,7 +173,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-    console.log('[v0] Error syncing with cloud:', errorMsg, error)
+logger.error('Store', 'Error syncing with cloud', error)
   }
   },
   

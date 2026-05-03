@@ -6,10 +6,8 @@ import {
 } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 
-// Create Google Gemini provider
-const google = createGoogleGenerativeAI({
-  apiKey: process.env.GEMINI_API_KEY,
-})
+// Create Google Gemini provider - automatically uses GOOGLE_GENERATIVE_AI_API_KEY env var
+const google = createGoogleGenerativeAI()
 
 export const maxDuration = 30
 

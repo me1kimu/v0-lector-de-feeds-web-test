@@ -14,7 +14,8 @@ import {
   Layers,
   Twitter,
   Camera,
-  Sparkles
+  Sparkles,
+  Play
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +25,7 @@ const sourceTypeIcons: Record<SourceType, React.ReactNode> = {
   rss: <Rss className="h-4 w-4" />,
   mastodon: <AtSign className="h-4 w-4" />,
   bluesky: <CloudSun className="h-4 w-4" />,
+  youtube: <Play className="h-4 w-4" />,
   pixelfed: <Layers className="h-4 w-4" />,
   instagram: <Camera className="h-4 w-4" />,
   twitter: <Twitter className="h-4 w-4" />,
@@ -35,6 +37,7 @@ const sourceTypeLabels: Record<SourceType, string> = {
   rss: 'RSS',
   mastodon: 'Mastodon',
   bluesky: 'Bluesky',
+  youtube: 'YouTube',
   pixelfed: 'Pixelfed',
   instagram: 'Instagram',
   twitter: 'Twitter',

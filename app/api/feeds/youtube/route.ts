@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ items }, { status: 200 })
   } catch (error) {
-    console.error('[v0] YouTube feed error:', error)
+logger.error('YouTube', 'YouTube feed error', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
       { 

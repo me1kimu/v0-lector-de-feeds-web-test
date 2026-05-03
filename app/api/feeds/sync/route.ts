@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[FeedSync] Syncing ${items.length} items for source ${source.id} (${source.name})`
+      `[v0] FeedSync: Syncing ${items.length} items for source ${source.id} (${source.name})`
     )
 
     // Call the synchronization service
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       updateExisting,
     })
 
-    console.log(`[FeedSync] Sync completed for source ${source.id}:`, {
+    console.log(`[v0] FeedSync: Sync completed for source ${source.id}:`, {
       itemsAdded: result.itemsAdded,
       itemsUpdated: result.itemsUpdated,
       itemsSkipped: result.itemsSkipped,
@@ -64,7 +64,8 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[FeedSync] Sync error:', message, error)
+    const stack = error instanceof Error ? error.stack : ''
+    console.log('[v0] FeedSync API Error:', message, stack, error)
 
     return NextResponse.json(
       {

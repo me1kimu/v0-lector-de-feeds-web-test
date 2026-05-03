@@ -109,9 +109,11 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ items, feedTitle: feed.title })
   } catch (error) {
-    console.error('RSS fetch error:', error)
+    const msg = error instanceof Error ? error.message : 'Unknown error'
+    const stack = error instanceof Error ? error.stack : ''
+    console.log('[v0] RSS feed error for URL', url, msg, stack, error)
     return NextResponse.json(
-      { error: 'Failed to fetch RSS feed', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Failed to fetch RSS feed', details: msg },
       { status: 500 }
     )
   }

@@ -191,7 +191,8 @@ Contenido: ${item.content.substring(0, 500)}${item.content.length > 500 ? '...' 
     messages: await convertToModelMessages(messages),
     abortSignal: req.signal,
     onError: ({ error }) => {
-      console.error(`[v0] Stream error with ${selection.id}:`, error instanceof Error ? error.message : error)
+      const msg = error instanceof Error ? error.message : String(error)
+      console.log(`[v0] Chat stream error with ${selection?.id}:`, msg, error)
       // Invalidate cache so next request will re-probe
       cachedWorkingModel = null
     },

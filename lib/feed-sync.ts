@@ -100,8 +100,9 @@ export async function syncFeedItems(
       .eq('source_id', options.sourceId)
 
     if (fetchError) {
-      console.error('[FeedSync] Failed to fetch existing items:', fetchError)
-      throw new Error(`Failed to fetch existing items: ${fetchError.message}`)
+      const msg = fetchError instanceof Error ? fetchError.message : 'Unknown error'
+      console.log('[v0] FeedSync: Failed to fetch existing items for source', options.sourceId, msg, fetchError)
+      throw new Error(`Failed to fetch existing items: ${msg}`)
     }
 
     const existingMap = new Map(
@@ -167,7 +168,7 @@ export async function syncFeedItems(
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error'
-        console.error('[FeedSync] Error processing item:', message, item)
+        console.log('[v0] FeedSync: Error processing item:', message, item)
         errors.push({
           message: `Failed to process item "${item.title}": ${message}`,
           code: 'ITEM_PROCESS_ERROR',
@@ -182,9 +183,10 @@ export async function syncFeedItems(
         .insert(itemsToInsert)
 
       if (insertError) {
-        console.error('[FeedSync] Bulk insert error:', insertError)
+        const msg = insertError instanceof Error ? insertError.message : 'Unknown error'
+        console.log('[v0] FeedSync: Bulk insert error for source', options.sourceId, msg, insertError)
         throw new Error(
-          `Failed to insert items: ${insertError.message}`
+          `Failed to insert items: ${msg}`
         )
       }
     }
@@ -197,9 +199,10 @@ export async function syncFeedItems(
         .eq('id', id)
 
       if (updateError) {
-        console.error('[FeedSync] Update error for item', id, updateError)
+        const msg = updateError instanceof Error ? updateError.message : 'Unknown error'
+        console.log('[v0] FeedSync: Update error for item', id, msg, updateError)
         errors.push({
-          message: `Failed to update item: ${updateError.message}`,
+          message: `Failed to update item: ${msg}`,
           code: 'ITEM_UPDATE_ERROR',
         })
       }
@@ -230,7 +233,8 @@ export async function syncFeedItems(
       .eq('id', syncLogId)
 
     if (updateLogError) {
-      console.warn('[FeedSync] Failed to update sync log:', updateLogError)
+      const msg = updateLogError instanceof Error ? updateLogError.message : 'Unknown error'
+      console.log('[v0] FeedSync: Failed to update sync log:', msg, updateLogError)
     }
 
     return {
@@ -246,6 +250,9 @@ export async function syncFeedItems(
   } catch (error) {
     // Update sync log with error
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : ''
+    console.log('[v0] FeedSync: Sync failed for source', sourceId, errorMessage, errorStack, error)
+    
     const { error: updateLogError } = await supabase
       .from('feed_sync_logs')
       .update({
@@ -260,7 +267,8 @@ export async function syncFeedItems(
       .eq('id', syncLogId)
 
     if (updateLogError) {
-      console.error('[FeedSync] Failed to update error log:', updateLogError)
+      const msg = updateLogError instanceof Error ? updateLogError.message : 'Unknown error'
+      console.log('[v0] FeedSync: Failed to update error log:', msg, updateLogError)
     }
 
     throw error

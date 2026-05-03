@@ -171,9 +171,10 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       await get().loadSources()
       await get().loadSettings()
       
-    } catch (error) {
-      console.error('Cloud sync error:', error)
-    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+    console.log('[v0] Error syncing with cloud:', errorMsg, error)
+  }
   },
   
   loadSources: async () => {
@@ -431,16 +432,16 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       }
       
       await get().updateSource(sourceId, { lastFetched: Date.now() })
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-      console.error(`Failed to refresh ${source.type} feed "${source.name}":`, errorMessage)
-      await get().addNotification({
-        type: 'error',
-        title: 'Error de actualizacion',
-        message: `${source.name}: ${errorMessage}`,
-        sourceId
-      })
-    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Error desconocido'
+    console.log(`[v0] Error refreshing ${source?.type || 'unknown'} feed:`, errorMsg, error)
+    await get().addNotification({
+      type: 'error',
+      title: 'Error de actualizacion',
+      message: `${source?.name || 'Feed'}: ${errorMsg}`,
+      sourceId
+    })
+  }
   },
   
   refreshAllSources: async () => {

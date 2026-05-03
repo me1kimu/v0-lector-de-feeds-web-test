@@ -19,13 +19,14 @@ export function useFeedSync() {
     setSyncErrors([])
     
     try {
-      console.log('[FeedSync] Starting manual sync...')
+      console.log('[v0] FeedSync: Starting manual sync...')
       await refreshAllSources()
       setLastSyncTime(Date.now())
-      console.log('[FeedSync] Manual sync completed')
+      console.log('[v0] FeedSync: Manual sync completed')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
-      console.error('[FeedSync] Manual sync failed:', message)
+      const stack = error instanceof Error ? error.stack : ''
+      console.log('[v0] FeedSync: Manual sync failed:', message, stack, error)
       setSyncErrors([{ source: 'all', error: message }])
     } finally {
       setIsSyncing(false)
@@ -38,11 +39,11 @@ export function useFeedSync() {
     const intervalMs = (settings.defaultRefreshInterval ?? 15) * 60 * 1000
     
     if (intervalMs <= 0) {
-      console.log('[FeedSync] Auto-sync disabled')
+      console.log('[v0] FeedSync: Auto-sync disabled')
       return
     }
 
-    console.log(`[FeedSync] Setting up auto-sync every ${intervalMs / 60000} minutes`)
+    console.log(`[v0] FeedSync: Setting up auto-sync every ${intervalMs / 60000} minutes`)
 
     // Initial sync
     syncNow()
@@ -57,7 +58,8 @@ export function useFeedSync() {
       navigator.serviceWorker.ready.then((registration) => {
         if (registration.sync) {
           registration.sync.register('feed-sync').catch((err) => {
-            console.warn('[FeedSync] Background sync registration failed:', err)
+            const msg = err instanceof Error ? err.message : String(err)
+            console.log('[v0] FeedSync: Background sync registration failed:', msg, err)
           })
         }
       })

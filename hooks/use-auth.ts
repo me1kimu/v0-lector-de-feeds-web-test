@@ -59,9 +59,11 @@ export function useAuth() {
           isLoading: false,
         }))
       } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to get session'
+        console.log('[v0] Auth: Error getting initial session:', msg, error)
         setState(prev => ({
           ...prev,
-          error: error instanceof Error ? error.message : 'Failed to get session',
+          error: msg,
           isLoading: false,
         }))
       }

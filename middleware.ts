@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     const stack = error instanceof Error ? error.stack : ''
     
-    console.error('[v0] Middleware Error:', message, stack, error)
+logger.error('Middleware', 'Middleware Error', error)
     
     // Return error response
     return NextResponse.json(

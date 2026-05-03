@@ -7,11 +7,17 @@ import {
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 
-// Create OpenRouter provider for Gemma 4 (free model)
+// Create OpenRouter provider for Gemma (free model)
+// Uses chat completions endpoint for OpenAI compatibility
 const createOpenRouterClient = () => {
   return createOpenAI({
-    baseURL: 'https://openrouter.io/api/v1',
+    baseURL: 'https://openrouter.ai/api/v1',
     apiKey: process.env.OPENROUTER_API_KEY,
+    compatibility: 'compatible', // Use chat completions instead of responses API
+    headers: {
+      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://feedreader.app',
+      'X-Title': 'FeedReader',
+    },
   })
 }
 
@@ -69,7 +75,8 @@ Contenido: ${item.content.substring(0, 500)}${item.content.length > 500 ? '...' 
     // Try OpenRouter first (primary)
     if (process.env.OPENROUTER_API_KEY) {
       const openrouter = createOpenRouterClient()
-      model = openrouter('google/gemma-4-31b-it:free')
+      // Using Gemma 3 27B (latest free Gemma model on OpenRouter)
+      model = openrouter('google/gemma-3-27b-it:free')
     } else {
       throw new Error('OPENROUTER_API_KEY not configured')
     }

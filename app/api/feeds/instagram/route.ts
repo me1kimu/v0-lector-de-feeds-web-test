@@ -95,11 +95,12 @@ function parseInstagramMrss(xml: string, source: FeedSource): FeedItem[] {
     // Media RSS content
     const mediaContentMatches = itemXml.matchAll(/<media:content[^>]*url="([^"]+)"[^>]*(?:medium="([^"]*)")?[^>]*(?:type="([^"]*)")?[^>]*\/?>/g)
     for (const mediaMatch of mediaContentMatches) {
-      const url = mediaMatch[1]
+      const rawUrl = mediaMatch[1]
       const medium = mediaMatch[2]
       const type = mediaMatch[3]
       
-      if (url) {
+      if (rawUrl) {
+        const url = decodeHtmlEntities(rawUrl)
         media.push({
           type: determineMediaType(medium, type, url),
           url: url,
@@ -111,26 +112,14 @@ function parseInstagramMrss(xml: string, source: FeedSource): FeedItem[] {
     // Also check enclosures
     const enclosureMatches = itemXml.matchAll(/<enclosure[^>]*url="([^"]+)"[^>]*(?:type="([^"]*)")?[^>]*\/?>/g)
     for (const encMatch of enclosureMatches) {
-      const url = encMatch[1]
+      const rawUrl = encMatch[1]
       const type = encMatch[2]
       
-      if (url && !media.some(m => m.url === url)) {
-        media.push({
-          type: determineMediaType(undefined, type, url),
-          url: url,
-          previewUrl: url
-        })
-      }
-    }
-    
-    // Extract images from description HTML
-    const imgMatches = description?.matchAll(/<img[^>]*src="([^"]+)"[^>]*\/?>/g)
-    if (imgMatches) {
-      for (const imgMatch of imgMatches) {
-        const url = imgMatch[1]
-        if (url && !media.some(m => m.url === url)) {
+      if (rawUrl) {
+        const url = decodeHtmlEntities(rawUrl)
+        if (!media.some(m => m.url === url)) {
           media.push({
-            type: 'image',
+            type: determineMediaType(undefined, type, url),
             url: url,
             previewUrl: url
           })
@@ -138,10 +127,41 @@ function parseInstagramMrss(xml: string, source: FeedSource): FeedItem[] {
       }
     }
     
-    // Clean up content - strip HTML for plain text version
-    const cleanContent = description 
-      ? decodeHtmlEntities(description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
-      : title || ''
+    // Extract images from description HTML (need to decode entities first)
+    const decodedDesc = description ? decodeHtmlEntities(description) : ''
+    const imgMatches = decodedDesc.matchAll(/<img[^>]*src="([^"]+)"[^>]*\/?>/gi)
+    if (imgMatches) {
+      for (const imgMatch of imgMatches) {
+        const url = imgMatch[1]
+        if (url && !media.some(m => m.url === url)) {
+          media.push({
+            type: 'image',
+            url: decodeHtmlEntities(url),
+            previewUrl: decodeHtmlEntities(url)
+          })
+        }
+      }
+    }
+    
+    // Clean up content - decode HTML entities first, then strip HTML tags for plain text
+    const decodedDescription = description ? decodeHtmlEntities(description) : ''
+    
+    // Remove <img> tags since we extract media separately
+    const descriptionWithoutImages = decodedDescription
+      .replace(/<img[^>]*\/?>/gi, '')
+      .replace(/<a[^>]*><\/a>/gi, '') // Remove empty anchor tags left after removing images
+    
+    // Extract plain text content (for accessibility and search)
+    const cleanContent = descriptionWithoutImages
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    
+    // Create clean HTML content without raw img tags (images come from media array)
+    const cleanHtml = descriptionWithoutImages
+      .replace(/<br\s*\/?>/gi, '<br />')
+      .trim()
     
     const item: FeedItem = {
       id: `instagram-${source.id}-${link || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -149,8 +169,8 @@ function parseInstagramMrss(xml: string, source: FeedSource): FeedItem[] {
       sourceType: 'instagram',
       sourceName: source.name,
       title: title ? decodeHtmlEntities(title) : undefined,
-      content: cleanContent,
-      contentHtml: description,
+      content: cleanContent || title || '',
+      contentHtml: cleanHtml || undefined,
       author: {
         name: author || channelTitle.replace(' - Instagram', '') || source.credentials?.handle || 'Instagram User',
         handle: source.credentials?.handle,

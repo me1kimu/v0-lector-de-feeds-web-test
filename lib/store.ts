@@ -408,7 +408,8 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       })
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        const errData = await response.json().catch(() => null)
+        throw new Error(errData?.error || `HTTP ${response.status}`)
       }
       
       const data = await response.json()
@@ -441,7 +442,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       
       await get().loadSources()
     } catch (error) {
-      logger.error('Store', `Error refreshing ${source?.type} feed`, error)
+      logger.warn('Store', `Error refreshing ${source?.type} feed: ${source?.name}`, undefined, error instanceof Error ? error : new Error(String(error)))
     }
   },
   

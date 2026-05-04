@@ -32,14 +32,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { source } = body as { source: FeedSource }
     
-    if (!source?.credentials?.handle) {
+    let handle = source?.credentials?.handle
+    if (!handle && source?.url) {
+      try {
+        const urlObj = new URL(source.url)
+        const parts = urlObj.pathname.split('/').filter(Boolean)
+        if (parts.length > 0) handle = parts[0]
+      } catch (e) {
+        handle = source.url
+      }
+    }
+
+    if (!handle) {
       return NextResponse.json(
         { error: 'Instagram username is required' },
         { status: 400 }
       )
     }
     
-    const username = source.credentials.handle.replace('@', '')
+    const username = handle.replace('@', '')
     
     // Use the RSS Bridge endpoint provided
     const bridgeUrl = `https://wtf.roflcopter.fr/rss-bridge/?action=display&bridge=InstagramBridge&context=Username&u=${encodeURIComponent(username)}&media_type=all&direct_links=on&format=Mrss`

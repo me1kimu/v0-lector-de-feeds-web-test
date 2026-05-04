@@ -85,6 +85,20 @@ export async function syncFeedItems(
     .single()
 
   if (logError) {
+    // 23503 is the PostgreSQL error code for foreign_key_violation
+    if (logError.code === '23503' && logError.message.includes('feed_sync_logs_source_id_fkey')) {
+      console.log(`[FeedSync] Source ${options.sourceId} was deleted, aborting sync.`)
+      return {
+        success: false,
+        itemsFetched: 0,
+        itemsAdded: 0,
+        itemsUpdated: 0,
+        itemsSkipped: 0,
+        errors: [{ message: 'Source was deleted during sync', code: 'SOURCE_DELETED' }],
+        syncDuration: Date.now() - startTime,
+        logId: ''
+      }
+    }
     console.error('[FeedSync] Failed to create sync log:', logError)
     throw new Error(`Failed to create sync log: ${logError.message || JSON.stringify(logError)}`)
   }
@@ -208,28 +222,28 @@ export async function syncFeedItems(
       }
     }
 
-    // Enforce 200 items limit per user
-    const { data: userItems, error: limitFetchError } = await supabase
+    // Enforce 200 items limit per user efficiently using range and a single delete query
+    const { data: limitItems, error: limitFetchError } = await supabase
       .from('feed_items')
-      .select('id')
+      .select('published_at')
       .eq('user_id', user.id)
       .order('published_at', { ascending: false })
+      .range(199, 199)
+      .limit(1)
 
-    if (!limitFetchError && userItems && userItems.length > 200) {
-      // Chunk deletion to avoid excessively long query
-      const itemsToDelete = userItems.slice(200).map(item => item.id)
-      for (let i = 0; i < itemsToDelete.length; i += 100) {
-        const chunk = itemsToDelete.slice(i, i + 100)
-        const { error: deleteError } = await supabase
-          .from('feed_items')
-          .delete()
-          .in('id', chunk)
+    if (!limitFetchError && limitItems && limitItems.length > 0) {
+      const thresholdDate = limitItems[0].published_at
+      const { error: deleteError } = await supabase
+        .from('feed_items')
+        .delete()
+        .eq('user_id', user.id)
+        .lt('published_at', thresholdDate)
 
-        if (deleteError) {
-          console.error('[FeedSync] Error enforcing 200 items limit:', deleteError)
-        }
+      if (deleteError) {
+        console.error('[FeedSync] Error enforcing 200 items limit:', deleteError)
+      } else {
+        console.log(`[FeedSync] Enforced 200 limit, deleted items older than ${thresholdDate}`)
       }
-      console.log(`[FeedSync] Deleted ${itemsToDelete.length} old items to maintain 200 limit`)
     }
 
     // Update sync log with results

@@ -7,7 +7,7 @@ const RP_ID = process.env.NEXT_PUBLIC_RP_ID || 'localhost'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, rpId: bodyRpId } = await request.json()
+    const { email } = await request.json()
 
     if (!email) {
       return NextResponse.json(
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     // Generate WebAuthn authentication options
     const requestUrl = new URL(request.url)
     const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.hostname
-    const dynamicRpId = bodyRpId || hostHeader.split(':')[0]
+    const dynamicRpId = hostHeader.split(':')[0]
 
     const options = await generateAuthenticationOptions({
       rpID: dynamicRpId,

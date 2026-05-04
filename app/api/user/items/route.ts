@@ -1,9 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 // GET - Fetch user's feed items from cloud
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams
+    const sourceId = searchParams.get('sourceId')
+    const sourceType = searchParams.get('sourceType')
+    const limit = parseInt(searchParams.get('limit') || '200', 10)
+
     const supabase = await createClient()
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -12,12 +17,22 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: items, error } = await supabase
+    let query = supabase
       .from('feed_items')
       .select('*')
       .eq('user_id', user.id)
-      .order('published_at', { ascending: false })
-      .limit(200)
+
+    if (sourceId) {
+      query = query.eq('source_id', sourceId)
+    }
+
+    if (sourceType) {
+      query = query.eq('source_type', sourceType)
+    }
+
+    query = query.order('published_at', { ascending: false }).limit(limit)
+
+    const { data: items, error } = await query
 
     if (error) {
       console.error('Fetch cloud items error:', error)

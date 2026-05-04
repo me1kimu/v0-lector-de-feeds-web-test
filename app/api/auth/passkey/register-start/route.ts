@@ -10,7 +10,7 @@ const ORIGIN = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, email, displayName, rpId: bodyRpId } = await request.json()
+    const { userId, email, displayName } = await request.json()
 
     if (!userId || !email) {
       return NextResponse.json(
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // Generate WebAuthn registration options
     const requestUrl = new URL(request.url)
     const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.hostname
-    const dynamicRpId = bodyRpId || hostHeader.split(':')[0]
+    const dynamicRpId = hostHeader.split(':')[0]
 
     const options = await generateRegistrationOptions({
       rpID: dynamicRpId,

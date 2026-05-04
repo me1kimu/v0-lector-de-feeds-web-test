@@ -68,7 +68,7 @@
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
     "rss-parser": "^3.13.0",
-    "fast-xml-parser": "^4.3.6",
+    "fast-xml-parser": "^5.7.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^3.3.1",
     "tweetnacl": "^1.0.3",

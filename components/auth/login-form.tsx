@@ -35,7 +35,7 @@ export function LoginForm() {
       const startRes = await fetch('/api/auth/passkey/authenticate-start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, rpId: window.location.hostname })
       })
 
       if (!startRes.ok) {
@@ -48,14 +48,15 @@ export function LoginForm() {
       // Perform WebAuthn authentication
       const credential = await startAuthentication(options)
 
-      // Complete authentication
+      // Verify authentication
       const completeRes = await fetch('/api/auth/passkey/authenticate-complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
           credential,
-          challenge
+          challenge,
+          rpId: window.location.hostname
         })
       })
 

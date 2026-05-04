@@ -208,6 +208,30 @@ export async function syncFeedItems(
       }
     }
 
+    // Enforce 200 items limit per user
+    const { data: userItems, error: limitFetchError } = await supabase
+      .from('feed_items')
+      .select('id')
+      .eq('user_id', user.id)
+      .order('published_at', { ascending: false })
+
+    if (!limitFetchError && userItems && userItems.length > 200) {
+      // Chunk deletion to avoid excessively long query
+      const itemsToDelete = userItems.slice(200).map(item => item.id)
+      for (let i = 0; i < itemsToDelete.length; i += 100) {
+        const chunk = itemsToDelete.slice(i, i + 100)
+        const { error: deleteError } = await supabase
+          .from('feed_items')
+          .delete()
+          .in('id', chunk)
+
+        if (deleteError) {
+          console.error('[FeedSync] Error enforcing 200 items limit:', deleteError)
+        }
+      }
+      console.log(`[FeedSync] Deleted ${itemsToDelete.length} old items to maintain 200 limit`)
+    }
+
     // Update sync log with results
     const syncStatus =
       errors.length === 0

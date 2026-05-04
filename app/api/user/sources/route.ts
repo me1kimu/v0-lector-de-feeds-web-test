@@ -179,6 +179,23 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
+    const deleteAll = searchParams.get('deleteAll') === 'true'
+
+    if (deleteAll) {
+      const { error } = await supabase
+        .from('feed_sources')
+        .delete()
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Delete all sources error:', error)
+        return NextResponse.json(
+          { error: 'Failed to delete all sources' },
+          { status: 500 }
+        )
+      }
+      return NextResponse.json({ success: true })
+    }
 
     if (!id) {
       return NextResponse.json(

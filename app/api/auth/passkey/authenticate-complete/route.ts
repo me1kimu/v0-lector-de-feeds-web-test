@@ -8,7 +8,7 @@ const ORIGIN = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, credential, challenge } = await request.json()
+    const { userId, credential, challenge, rpId: bodyRpId } = await request.json()
 
     if (!userId || !credential || !challenge) {
       return NextResponse.json(
@@ -51,11 +51,18 @@ export async function POST(request: NextRequest) {
 
     try {
       // Verify the authentication response
+      const requestUrl = new URL(request.url)
+      const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.hostname
+      const dynamicRpId = bodyRpId || hostHeader.split(':')[0]
+      const originHeader = request.headers.get('origin')
+      const protoHeader = request.headers.get('x-forwarded-proto') || 'http'
+      const expectedOrigin = originHeader || (dynamicRpId === 'localhost' ? `http://localhost:${hostHeader.split(':')[1] || '3000'}` : `${protoHeader}://${hostHeader}`)
+
       const verification = await verifyAuthenticationResponse({
         response: credential,
         expectedChallenge: challenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID,
+        expectedOrigin: expectedOrigin,
+        expectedRPID: dynamicRpId,
         credential: {
           id: Buffer.from(storedCredential.credential_id, 'base64url'),
           publicKey: Buffer.from(storedCredential.credential_public_key, 'base64'),

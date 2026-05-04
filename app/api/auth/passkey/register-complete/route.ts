@@ -8,7 +8,7 @@ const ORIGIN = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, credential, challenge, deviceName } = await request.json()
+    const { userId, credential, challenge, deviceName, rpId: bodyRpId } = await request.json()
 
     if (!userId || !credential || !challenge) {
       return NextResponse.json(
@@ -36,11 +36,18 @@ export async function POST(request: NextRequest) {
 
     // Verify the credential attestation
     try {
+      const requestUrl = new URL(request.url)
+      const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.hostname
+      const dynamicRpId = bodyRpId || hostHeader.split(':')[0]
+      const originHeader = request.headers.get('origin')
+      const protoHeader = request.headers.get('x-forwarded-proto') || 'http'
+      const expectedOrigin = originHeader || (dynamicRpId === 'localhost' ? `http://localhost:${hostHeader.split(':')[1] || '3000'}` : `${protoHeader}://${hostHeader}`)
+
       const verification = await verifyRegistrationResponse({
         response: credential,
         expectedChallenge: challenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID
+        expectedOrigin: expectedOrigin,
+        expectedRPID: dynamicRpId
       })
 
       if (!verification.verified) {

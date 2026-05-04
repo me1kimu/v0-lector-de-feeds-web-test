@@ -10,15 +10,16 @@ import { FeedList } from './feed-list'
 import { SettingsPanel } from './settings-panel'
 import { NotificationsPanel } from './notifications-panel'
 import { FeedChatbot } from './feed-chatbot'
+import { LandingPage } from './landing-page'
 import { cn } from '@/lib/utils'
 import { Spinner } from '@/components/ui/spinner'
 import { Badge } from '@/components/ui/badge'
 import { WifiOff } from 'lucide-react'
 
 export function FeedApp() {
-  const { initialize, isLoading, refreshAllSources, setUser, settingsOpen, notificationsOpen, setSettingsOpen, setNotificationsOpen } = useFeedStore()
+  const { initialize, isLoading, refreshAllSources, setUser, settingsOpen, notificationsOpen, setSettingsOpen, setNotificationsOpen, isAuthenticated } = useFeedStore()
   const { isOnline, isRegistered } = useServiceWorker()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -38,7 +39,6 @@ export function FeedApp() {
   
   useEffect(() => {
     setMounted(true)
-    initialize()
     
     // Listen for background sync events from service worker
     const handleSyncFeeds = () => {
@@ -50,14 +50,20 @@ export function FeedApp() {
     return () => {
       window.removeEventListener('sync-feeds', handleSyncFeeds)
     }
-  }, [initialize, refreshAllSources])
-  
-  if (!mounted) {
+  }, [refreshAllSources])
+
+  // Show spinner while checking auth or mounting
+  if (!mounted || authLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <Spinner className="h-8 w-8 text-primary" />
       </div>
     )
+  }
+
+  // Show landing page if not authenticated
+  if (!isAuthenticated) {
+    return <LandingPage />
   }
   
   return (
@@ -90,7 +96,7 @@ export function FeedApp() {
           onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
         />
         
-        {isLoading && !mounted ? (
+        {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <Spinner className="h-8 w-8 text-primary" />
           </div>
@@ -113,7 +119,7 @@ export function FeedApp() {
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
           <Badge variant="secondary" className="flex items-center gap-2 px-4 py-2 bg-amber-500/90 text-amber-50">
             <WifiOff className="h-4 w-4" />
-            Sin conexión - Mostrando contenido en caché
+            Sin conexión - Usando datos sincronizados
           </Badge>
         </div>
       )}

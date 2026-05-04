@@ -606,7 +606,8 @@ export function SettingsPanel() {
     sources,
     addSource,
     updateSource,
-    deleteSource
+    deleteSource,
+    deleteAllSources
   } = useFeedStore()
   
   const [showAddForm, setShowAddForm] = useState(false)
@@ -615,7 +616,7 @@ export function SettingsPanel() {
   const [importProgress, setImportProgress] = useState<number | null>(null)
   const [importStatusText, setImportStatusText] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewItems, setPreviewItems] = useState<Array<{ title?: string; url?: string }>>([])
+  const [previewItems, setPreviewItems] = useState<Array<{ title?: string; url?: string; htmlUrl?: string }>>([])
   const isImportingPreview = importProgress !== null
   const toastState = useToast()
   
@@ -679,14 +680,15 @@ export function SettingsPanel() {
                       // Parse OPML in client using DOMParser to extract outlines
                       const parser = new DOMParser()
                       const doc = parser.parseFromString(text, 'application/xml')
-                      const outlines: Array<{ title?: string; url?: string }> = []
+                      const outlines: Array<{ title?: string; url?: string; htmlUrl?: string }> = []
 
                       function walk(node: Element) {
                         if (node.tagName && node.tagName.toLowerCase() === 'outline') {
                           const xmlUrl =
                             node.getAttribute('xmlUrl') || node.getAttribute('xmlurl') || node.getAttribute('url') || undefined
                           const title = node.getAttribute('title') || node.getAttribute('text') || undefined
-                          if (xmlUrl) outlines.push({ title: title || undefined, url: xmlUrl })
+                          const htmlUrl = node.getAttribute('htmlUrl') || node.getAttribute('htmlurl') || undefined
+                          if (xmlUrl) outlines.push({ title: title || undefined, url: xmlUrl, htmlUrl })
                         }
                         node.childNodes.forEach((child) => {
                           if ((child as Element).tagName) walk(child as Element)
@@ -750,6 +752,20 @@ export function SettingsPanel() {
                 >
                   Exportar OPML
                 </Button>
+                {sources.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    className="ml-auto"
+                    onClick={async () => {
+                      if (confirm('¿Estás seguro de eliminar todas las fuentes? Esto no se puede deshacer.')) {
+                        await deleteAllSources()
+                        toastState.toast({ title: 'Fuentes eliminadas', description: 'Todas las fuentes han sido eliminadas' })
+                      }
+                    }}
+                  >
+                    Eliminar todas
+                  </Button>
+                )}
               </div>
             )}
             

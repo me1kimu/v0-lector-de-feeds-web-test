@@ -102,7 +102,6 @@ export async function createPasskey(
     timeout: options.timeout || 60000,
     attestation: 'direct',
     authenticatorSelection: {
-      authenticatorAttachment: 'platform',
       userVerification: 'preferred',
       residentKey: 'preferred',
     },
@@ -113,26 +112,35 @@ export async function createPasskey(
     })),
   }
 
-  const credential = (await navigator.credentials.create({
-    publicKey: publicKeyCredentialCreationOptions,
-  })) as PublicKeyCredential
+  try {
+    const credential = (await navigator.credentials.create({
+      publicKey: publicKeyCredentialCreationOptions,
+    })) as PublicKeyCredential
 
-  if (!credential) {
-    throw new Error('Failed to create credential')
-  }
+    if (!credential) {
+      throw new Error('Failed to create credential')
+    }
 
-  const response = credential.response as AuthenticatorAttestationResponse
+    const response = credential.response as AuthenticatorAttestationResponse
 
-  return {
-    id: credential.id,
-    rawId: base64urlEncode(credential.rawId),
-    type: credential.type,
-    response: {
-      clientDataJSON: base64urlEncode(response.clientDataJSON),
-      attestationObject: base64urlEncode(response.attestationObject),
-    },
-    authenticatorAttachment: credential.authenticatorAttachment || undefined,
-    clientExtensionResults: credential.getClientExtensionResults(),
+    return {
+      id: credential.id,
+      rawId: base64urlEncode(credential.rawId),
+      type: credential.type,
+      response: {
+        clientDataJSON: base64urlEncode(response.clientDataJSON),
+        attestationObject: base64urlEncode(response.attestationObject),
+      },
+      authenticatorAttachment: credential.authenticatorAttachment || undefined,
+      clientExtensionResults: credential.getClientExtensionResults(),
+    }
+  } catch (error: any) {
+    console.error('[v0] WebAuthn create error:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    })
+    throw error
   }
 }
 
@@ -158,30 +166,39 @@ export async function authenticateWithPasskey(
     mediation: conditional ? 'conditional' : 'optional',
   }
 
-  const credential = (await navigator.credentials.get(
-    credentialRequestOptions
-  )) as PublicKeyCredential
+  try {
+    const credential = (await navigator.credentials.get(
+      credentialRequestOptions
+    )) as PublicKeyCredential
 
-  if (!credential) {
-    throw new Error('Failed to get credential')
-  }
+    if (!credential) {
+      throw new Error('Failed to get credential')
+    }
 
-  const response = credential.response as AuthenticatorAssertionResponse
+    const response = credential.response as AuthenticatorAssertionResponse
 
-  return {
-    id: credential.id,
-    rawId: base64urlEncode(credential.rawId),
-    type: credential.type,
-    response: {
-      clientDataJSON: base64urlEncode(response.clientDataJSON),
-      authenticatorData: base64urlEncode(response.authenticatorData),
-      signature: base64urlEncode(response.signature),
-      userHandle: response.userHandle
-        ? base64urlEncode(response.userHandle)
-        : undefined,
-    },
-    authenticatorAttachment: credential.authenticatorAttachment || undefined,
-    clientExtensionResults: credential.getClientExtensionResults(),
+    return {
+      id: credential.id,
+      rawId: base64urlEncode(credential.rawId),
+      type: credential.type,
+      response: {
+        clientDataJSON: base64urlEncode(response.clientDataJSON),
+        authenticatorData: base64urlEncode(response.authenticatorData),
+        signature: base64urlEncode(response.signature),
+        userHandle: response.userHandle
+          ? base64urlEncode(response.userHandle)
+          : undefined,
+      },
+      authenticatorAttachment: credential.authenticatorAttachment || undefined,
+      clientExtensionResults: credential.getClientExtensionResults(),
+    }
+  } catch (error: any) {
+    console.error('[v0] WebAuthn get error:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    })
+    throw error
   }
 }
 

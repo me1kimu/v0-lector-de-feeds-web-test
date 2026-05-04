@@ -59,7 +59,14 @@ async function probeModel(model: LanguageModel, timeoutMs = 5000): Promise<boole
     })
     return true
   } catch (error) {
-    console.error('[v0] Model probe failed:', error instanceof Error ? error.message : error)
+    const message = error instanceof Error ? error.message : String(error)
+    const isTimeoutAbort = /aborted|timeout|timed out/i.test(message)
+
+    if (isTimeoutAbort) {
+      console.warn(`[v0] Model probe timed out after ${timeoutMs}ms:`, message)
+    } else {
+      console.error('[v0] Model probe failed:', message)
+    }
     return false
   }
 }
@@ -124,7 +131,8 @@ async function selectWorkingModel(preferOllama: boolean): Promise<{ model: Langu
   for (const attempt of attempts) {
     try {
       const model = attempt.build()
-      const works = await probeModel(model, attempt.id.startsWith('ollama:') ? 2000 : 5000)
+      const timeoutMs = attempt.id.startsWith('ollama:') ? 10000 : 7000
+      const works = await probeModel(model, timeoutMs)
       if (works) {
         console.log('[v0] Selected model:', attempt.id)
         cachedWorkingModel = { id: attempt.id, createdAt: Date.now() }

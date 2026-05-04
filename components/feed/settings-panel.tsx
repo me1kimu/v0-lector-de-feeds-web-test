@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useFeedStore } from '@/lib/store'
 import type { FeedSource, SourceType, SourceCredentials } from '@/lib/types'
 import { 
@@ -12,6 +12,9 @@ import {
 } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
+import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
@@ -607,6 +610,14 @@ export function SettingsPanel() {
   } = useFeedStore()
   
   const [showAddForm, setShowAddForm] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const { loadSources, syncWithCloud } = useFeedStore()
+  const [importProgress, setImportProgress] = useState<number | null>(null)
+  const [importStatusText, setImportStatusText] = useState<string | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewItems, setPreviewItems] = useState<Array<{ title?: string; url?: string }>>([])
+  const isImportingPreview = importProgress !== null
+  const toastState = useToast()
   
   const handleAddSource = async (source: FeedSource) => {
     await addSource(source)
@@ -648,10 +659,98 @@ export function SettingsPanel() {
                 </CardContent>
               </Card>
             ) : (
-              <Button onClick={() => setShowAddForm(true)} className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar fuente
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowAddForm(true)} className="flex-1">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar fuente
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".opml,application/xml,text/xml"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0]
+                    if (!f) return
+                    try {
+                      const text = await f.text()
+                      setImportStatusText('Analizando OPML...')
+
+                      // Parse OPML in client using DOMParser to extract outlines
+                      const parser = new DOMParser()
+                      const doc = parser.parseFromString(text, 'application/xml')
+                      const outlines: Array<{ title?: string; url?: string }> = []
+
+                      function walk(node: Element) {
+                        if (node.tagName && node.tagName.toLowerCase() === 'outline') {
+                          const xmlUrl =
+                            node.getAttribute('xmlUrl') || node.getAttribute('xmlurl') || node.getAttribute('url') || undefined
+                          const title = node.getAttribute('title') || node.getAttribute('text') || undefined
+                          if (xmlUrl) outlines.push({ title: title || undefined, url: xmlUrl })
+                        }
+                        node.childNodes.forEach((child) => {
+                          if ((child as Element).tagName) walk(child as Element)
+                        })
+                      }
+
+                      const body = doc.querySelector('body') || doc
+                      if (body) walk(body as Element)
+
+                      const total = outlines.length
+                      if (total === 0) {
+                        toastState.toast({ title: 'Import OPML', description: 'No se encontraron entradas OPML' })
+                        setImportStatusText(null)
+                        return
+                      }
+
+                      // Store preview and open dialog
+                      setPreviewItems(outlines)
+                      setPreviewOpen(true)
+
+                    } catch (err) {
+                      console.error('Import OPML parse failed', err)
+                      toastState.toast({ title: 'Import OPML', description: 'Error analizando OPML', variant: 'destructive' })
+                    } finally {
+                      // clear input
+                      ;(e.target as HTMLInputElement).value = ''
+                      setImportStatusText(null)
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef?.current?.click()}
+                >
+                  Importar OPML
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/user/sources/export-opml')
+                      if (!res.ok) {
+                        const err = await res.json().catch(() => ({ error: 'Export failed' }))
+                        toastState.toast({ title: 'Export OPML', description: err.error || 'Export failed', variant: 'destructive' })
+                        return
+                      }
+                      const blob = await res.blob()
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = 'feeds.opml'
+                      document.body.appendChild(a)
+                      a.click()
+                      a.remove()
+                      URL.revokeObjectURL(url)
+                    } catch (err) {
+                      console.error('Export OPML failed', err)
+                      toastState.toast({ title: 'Export OPML', description: 'Error exportando OPML', variant: 'destructive' })
+                    }
+                  }}
+                >
+                  Exportar OPML
+                </Button>
+              </div>
             )}
             
             <div className="space-y-3">
@@ -664,6 +763,93 @@ export function SettingsPanel() {
                 />
               ))}
             </div>
+
+            {/* Preview Dialog for OPML import */}
+            <Dialog
+              open={previewOpen}
+              onOpenChange={(nextOpen) => {
+                if (!isImportingPreview) {
+                  setPreviewOpen(nextOpen)
+                }
+              }}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Vista previa de importación</DialogTitle>
+                  <DialogDescription>Revisa las entradas detectadas antes de confirmar la importación.</DialogDescription>
+                </DialogHeader>
+
+                <div className="max-h-60 overflow-auto mt-2">
+                  {previewItems.slice(0, 200).map((it, idx) => (
+                    <div key={idx} className="py-1 border-b last:border-b-0 text-sm">
+                      <div className="font-medium">{it.title || it.url}</div>
+                      <div className="text-xs text-muted-foreground truncate">{it.url}</div>
+                    </div>
+                  ))}
+                  {previewItems.length > 200 && (
+                    <div className="text-xs text-muted-foreground py-2">Mostrando 200 de {previewItems.length} entradas</div>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  {isImportingPreview ? (
+                    <div className="w-full">
+                      <div className="text-sm mb-2">{importStatusText}</div>
+                      <Progress value={importProgress ?? 0} />
+                    </div>
+                  ) : (
+                    <>
+                      <Button variant="outline" onClick={() => setPreviewOpen(false)}>Cancelar</Button>
+                      <Button onClick={async () => {
+                    // Start batch import
+                    setImportProgress(0)
+                    setImportStatusText('Iniciando importación...')
+                    const batchSize = 20
+                    let processed = 0
+                    let totalInserted = 0
+                    let totalSkipped = 0
+                    const total = previewItems.length
+
+                    for (let i = 0; i < previewItems.length; i += batchSize) {
+                      const batch = previewItems.slice(i, i + batchSize)
+                      setImportStatusText(`Importando ${Math.min(i + batchSize, total)} de ${total}...`)
+                      try {
+                        const res = await fetch('/api/user/sources/import-opml/batch', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ items: batch })
+                        })
+                        if (res.ok) {
+                          const data = await res.json().catch(() => ({ inserted: 0, skipped: 0 }))
+                          totalInserted += data.inserted || 0
+                          totalSkipped += data.skipped || 0
+                        } else {
+                          const err = await res.json().catch(() => ({ error: 'Batch failed' }))
+                          console.error('Batch import error', err)
+                        }
+                      } catch (err) {
+                        console.error('Batch request failed', err)
+                      }
+
+                      processed += batch.length
+                      setImportProgress(Math.round((processed / total) * 100))
+                    }
+
+                    setImportStatusText(`Finalizado. Insertadas: ${totalInserted}. Omitidas: ${totalSkipped}`)
+                    toastState.toast({ title: 'Import OPML', description: `Insertadas: ${totalInserted}. Omitidas: ${totalSkipped}` })
+                    await syncWithCloud()
+                    setTimeout(() => {
+                      setImportProgress(null)
+                      setImportStatusText(null)
+                      setPreviewOpen(false)
+                      setPreviewItems([])
+                    }, 2000)
+                      }}>Importar</Button>
+                    </>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             
             {sources.length === 0 && !showAddForm && (
               <div className="text-center py-8 text-muted-foreground">

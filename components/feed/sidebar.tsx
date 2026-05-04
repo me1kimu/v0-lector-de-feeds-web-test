@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { useFeedStore } from '@/lib/store'
 import type { SourceType } from '@/lib/types'
@@ -80,7 +81,7 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
   return (
     <aside 
       className={cn(
-        'flex flex-col border-r border-border bg-sidebar h-full transition-all duration-200',
+        'flex flex-col border-r border-border bg-sidebar h-full min-h-0 transition-all duration-200',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
@@ -142,7 +143,7 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
       </div>
       
       {/* Navigation */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0 w-full">
         <nav className="p-2">
           {/* All feeds */}
           <button

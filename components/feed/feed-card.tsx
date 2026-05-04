@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -58,6 +58,64 @@ const sourceColors = {
 interface FeedCardProps {
   item: FeedItem
   compact?: boolean
+}
+
+interface MediaVideoProps {
+  src: string
+  poster?: string
+}
+
+function MediaVideo({ src, poster }: MediaVideoProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const videoElement = videoRef.current
+    if (!videoElement) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting && entry.intersectionRatio >= 0.6)
+      },
+      {
+        threshold: [0, 0.6, 1],
+        rootMargin: '0px',
+      }
+    )
+
+    observer.observe(videoElement)
+
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const videoElement = videoRef.current
+    if (!videoElement) return
+
+    if (isVisible) {
+      const playPromise = videoElement.play()
+      if (playPromise) {
+        playPromise.catch(() => {
+          // Ignore autoplay rejections caused by browser policy or race conditions.
+        })
+      }
+    } else {
+      videoElement.pause()
+    }
+  }, [isVisible])
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      poster={poster}
+      muted
+      playsInline
+      controls
+      preload="metadata"
+      className="absolute inset-0 w-full h-full object-cover"
+    />
+  )
 }
 
 export function FeedCard({ item, compact = false }: FeedCardProps) {
@@ -196,25 +254,25 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
         {/* Header */}
         <div className="flex items-start gap-3">
           <Avatar className="h-10 w-10 shrink-0">
-            <AvatarImage src={item.author.avatar} alt={item.author.name} />
+            <AvatarImage src={item.author?.avatar} alt={String(item.author?.name || '')} />
             <AvatarFallback>
-              {item.author.name.slice(0, 2).toUpperCase()}
+              {String(item.author?.name || '?').slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <a 
-                href={item.author.url} 
+                href={item.author?.url || '#'} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="font-semibold text-foreground hover:underline truncate"
               >
-                {item.author.name}
+                {String(item.author?.name || 'Desconocido')}
               </a>
-              {item.author.handle && (
+              {item.author?.handle && (
                 <span className="text-muted-foreground text-sm truncate">
-                  {item.author.handle}
+                  {String(item.author.handle)}
                 </span>
               )}
               <span className="text-muted-foreground text-sm">·</span>
@@ -342,14 +400,9 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
                     <ImageOff className="h-8 w-8" />
                   </div>
                 ) : media.type === 'video' ? (
-                  <video 
+                  <MediaVideo
                     src={getMediaSrc(media.url)}
                     poster={getMediaSrc(media.previewUrl)}
-                    autoPlay
-                    muted
-                    playsInline
-                    controls
-                    className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
                   <img

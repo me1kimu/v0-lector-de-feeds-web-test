@@ -13,7 +13,7 @@ export async function GET() {
     }
 
     const { data: sources, error } = await supabase
-      .from('user_sources')
+      .from('feed_sources')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
@@ -66,14 +66,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: source, error } = await supabase
-      .from('user_sources')
+      .from('feed_sources')
       .insert({
         ...(id ? { id } : {}),
         user_id: user.id,
-        source_type,
+        type: source_type,
         name,
         url,
-        encrypted_credentials,
         refresh_interval: refresh_interval || 300000,
         enabled: enabled ?? true,
       })
@@ -110,7 +109,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, ...updates } = body
+    const { id, source_type, name, url, handle, refresh_interval, enabled } = body
 
     if (!id) {
       return NextResponse.json(
@@ -121,7 +120,7 @@ export async function PUT(request: NextRequest) {
 
     // Ensure user owns this source
     const { data: existingSource } = await supabase
-      .from('user_sources')
+      .from('feed_sources')
       .select('id')
       .eq('id', id)
       .eq('user_id', user.id)
@@ -135,9 +134,14 @@ export async function PUT(request: NextRequest) {
     }
 
     const { data: source, error } = await supabase
-      .from('user_sources')
+      .from('feed_sources')
       .update({
-        ...updates,
+        ...(source_type !== undefined && { type: source_type }),
+        ...(name !== undefined && { name }),
+        ...(url !== undefined && { url }),
+        ...(handle !== undefined && { handle }),
+        ...(refresh_interval !== undefined && { refresh_interval }),
+        ...(enabled !== undefined && { enabled }),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -184,7 +188,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { error } = await supabase
-      .from('user_sources')
+      .from('feed_sources')
       .delete()
       .eq('id', id)
       .eq('user_id', user.id)

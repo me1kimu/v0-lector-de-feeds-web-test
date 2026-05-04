@@ -109,7 +109,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, source_type, name, url, handle, refresh_interval, enabled } = body
+    const { id, source_type, name, url, handle, encrypted_credentials, refresh_interval, enabled } = body
 
     if (!id) {
       return NextResponse.json(

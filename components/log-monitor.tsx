@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -55,6 +56,9 @@ export function LogMonitor() {
             <AlertCircle className="h-5 w-5 text-destructive" />
             Monitor de Errores
           </DialogTitle>
+          <DialogDescription>
+            Resumen de errores recientes capturados por el sistema de logging.
+          </DialogDescription>
         </DialogHeader>
         <div className="max-h-96 overflow-y-auto space-y-2">
           {errors.length === 0 ? (

@@ -130,7 +130,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
               
               const localSource: FeedSource = {
                 id: cloudSource.id,
-                type: cloudSource.source_type as SourceType,
+                type: (cloudSource.type || cloudSource.source_type) as SourceType,
                 name: cloudSource.name,
                 url: cloudSource.url,
                 credentials,

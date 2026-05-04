@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.email_auth (
 -- Passkey challenges for WebAuthn flow
 CREATE TABLE IF NOT EXISTS public.passkey_challenges (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   challenge TEXT NOT NULL UNIQUE,
   challenge_type TEXT NOT NULL, -- 'registration' or 'authentication'
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -162,3 +162,85 @@ CREATE INDEX idx_encrypted_credentials_user_id ON public.encrypted_credentials(u
 CREATE INDEX idx_encrypted_credentials_source_id ON public.encrypted_credentials(source_id);
 CREATE INDEX idx_sessions_user_id ON public.sessions(user_id);
 CREATE INDEX idx_passkey_challenges_expires_at ON public.passkey_challenges(expires_at);
+
+-- Feed items (stores normalized feed entries)
+CREATE TABLE IF NOT EXISTS public.feed_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  source_id UUID NOT NULL REFERENCES public.feed_sources(id) ON DELETE CASCADE,
+  external_id TEXT NOT NULL,
+  title TEXT,
+  content TEXT,
+  content_html TEXT,
+  source_type TEXT,
+  source_name TEXT,
+  author_name TEXT,
+  author_url TEXT,
+  item_url TEXT,
+  media_urls TEXT[] DEFAULT ARRAY[]::TEXT[],
+  published_at TIMESTAMP WITH TIME ZONE,
+  sync_hash TEXT,
+  last_synced_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE (source_id, external_id)
+);
+
+-- Feed sync logs (records each sync run)
+CREATE TABLE IF NOT EXISTS public.feed_sync_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  source_id UUID REFERENCES public.feed_sources(id) ON DELETE SET NULL,
+  status TEXT NOT NULL,
+  items_fetched INTEGER DEFAULT 0,
+  items_added INTEGER DEFAULT 0,
+  items_updated INTEGER DEFAULT 0,
+  items_skipped INTEGER DEFAULT 0,
+  error_message TEXT,
+  error_code TEXT,
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  completed_at TIMESTAMP WITH TIME ZONE,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Allow 'pending' as initial state
+ALTER TABLE public.feed_sync_logs
+  ADD CONSTRAINT feed_sync_logs_status_check CHECK (status IN ('pending','success','partial','error','timeout'));
+
+-- Enable RLS for the new tables
+ALTER TABLE public.feed_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feed_sync_logs ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for feed_items
+CREATE POLICY "Users can read own feed items" ON public.feed_items
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own feed items" ON public.feed_items
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own feed items" ON public.feed_items
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own feed items" ON public.feed_items
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- RLS policies for feed_sync_logs
+CREATE POLICY "Users can read own feed sync logs" ON public.feed_sync_logs
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own feed sync logs" ON public.feed_sync_logs
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own feed sync logs" ON public.feed_sync_logs
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_feed_items_user_id ON public.feed_items(user_id);
+CREATE INDEX IF NOT EXISTS idx_feed_items_source_id ON public.feed_items(source_id);
+CREATE INDEX IF NOT EXISTS idx_feed_items_external_id ON public.feed_items(external_id);
+
+CREATE INDEX IF NOT EXISTS idx_feed_sync_logs_user_id ON public.feed_sync_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_feed_sync_logs_source_id ON public.feed_sync_logs(source_id);
+CREATE INDEX IF NOT EXISTS idx_feed_sync_logs_status ON public.feed_sync_logs(status);
+CREATE INDEX IF NOT EXISTS idx_feed_sync_logs_created_at ON public.feed_sync_logs(created_at);

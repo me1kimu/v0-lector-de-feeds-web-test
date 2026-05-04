@@ -26,7 +26,10 @@ export async function getSource(id: string): Promise<FeedSource | undefined> {
 }
 
 export async function addSource(source: FeedSource): Promise<string> {
-  return db.sources.add(source)
+  // Use `put` to upsert (insert or replace) to avoid ConstraintError
+  // when a source with the same primary key already exists in IndexedDB.
+  await db.sources.put(source)
+  return source.id
 }
 
 export async function updateSource(id: string, updates: Partial<FeedSource>): Promise<number> {

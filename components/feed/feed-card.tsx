@@ -71,6 +71,29 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
   
   const source = sources.find(s => s.id === item.sourceId)
   const showMedia = settings.showExternalMedia && item.media && item.media.length > 0
+
+  const getMediaSrc = (url?: string) => {
+    if (!url) return ''
+
+    if (item.sourceType !== 'instagram') {
+      return url
+    }
+
+    try {
+      const parsed = new URL(url)
+      const isInstagramCdn =
+        parsed.hostname.endsWith('.cdninstagram.com') ||
+        parsed.hostname.endsWith('.fbcdn.net')
+
+      if (!isInstagramCdn) {
+        return url
+      }
+
+      return `/api/media/proxy?url=${encodeURIComponent(url)}`
+    } catch {
+      return url
+    }
+  }
   
   // Check if this item has or can load full content
   const hasFullContent = !!item.fullContent || !!fullContent
@@ -320,14 +343,17 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
                   </div>
                 ) : media.type === 'video' ? (
                   <video 
-                    src={media.url}
-                    poster={media.previewUrl}
+                    src={getMediaSrc(media.url)}
+                    poster={getMediaSrc(media.previewUrl)}
+                    autoPlay
+                    muted
+                    playsInline
                     controls
                     className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
                   <img
-                    src={media.previewUrl || media.url}
+                    src={getMediaSrc(media.previewUrl || media.url)}
                     alt={media.alt || ''}
                     className="absolute inset-0 w-full h-full object-cover"
                     loading="lazy"

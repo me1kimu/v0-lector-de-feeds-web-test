@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
     const options = await generateRegistrationOptions({
       rpID: RP_ID,
       rpName: RP_NAME,
-      userID: Buffer.from(userId).toString('base64url'),
+      // simplewebauthn v13+ requires userID as bytes (Uint8Array), not string.
+      userID: Buffer.from(userId, 'utf8'),
       userName: email,
       userDisplayName: displayName || email,
       attestationType: 'direct',

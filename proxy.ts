@@ -1,7 +1,8 @@
+import { logger } from '@/lib/logger'
 import { updateSession } from '@/lib/supabase/proxy'
 import { type NextRequest, NextResponse } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   try {
     // Log incoming requests for monitoring
     const pathname = request.nextUrl.pathname
@@ -22,8 +23,8 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     const stack = error instanceof Error ? error.stack : ''
-    
-logger.error('Middleware', 'Middleware Error', error)
+
+    logger.error('Middleware', 'Middleware Error', error, { stack })
     
     // Return error response
     return NextResponse.json(

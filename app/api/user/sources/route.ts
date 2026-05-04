@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { 
+      id,
       source_type, 
       name, 
       url, 
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
     const { data: source, error } = await supabase
       .from('user_sources')
       .insert({
+        ...(id ? { id } : {}),
         user_id: user.id,
         source_type,
         name,

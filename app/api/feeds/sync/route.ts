@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { syncFeedItems } from '@/lib/feed-sync'
 import type { FeedSource } from '@/lib/types'
+import { logger } from '@/lib/logger'
 
 /**
  * Generic feed sync endpoint that handles all feed types

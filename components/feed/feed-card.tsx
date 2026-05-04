@@ -257,12 +257,12 @@ export function FeedCard({ item, compact = false }: FeedCardProps) {
             // Show full content when expanded
             <div 
               dangerouslySetInnerHTML={{ __html: fullContent || item.fullContent || '' }} 
-              className="prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-p:text-foreground prose-p:my-2 prose-span:text-foreground prose-div:text-foreground prose-headings:text-foreground prose-headings:mt-4 prose-headings:mb-2 prose-img:rounded-lg prose-img:my-4 prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-foreground"
+              className="prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-p:text-foreground prose-p:my-2 prose-span:text-foreground prose-div:text-foreground prose-headings:text-foreground prose-headings:mt-4 prose-headings:mb-2 prose-img:rounded-lg prose-img:my-4 prose-img:max-h-80 prose-img:w-auto prose-img:object-contain prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-foreground"
             />
           ) : item.contentHtml ? (
             <div 
               dangerouslySetInnerHTML={{ __html: item.contentHtml }} 
-              className="prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-p:text-foreground prose-p:m-0 prose-span:text-foreground prose-div:text-foreground [&_*]:text-foreground"
+              className="prose prose-sm dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-p:text-foreground prose-p:m-0 prose-span:text-foreground prose-div:text-foreground [&_*]:text-foreground [&_img]:max-h-80 [&_img]:w-auto [&_img]:object-contain [&_img]:rounded-lg"
             />
           ) : (
             <p className="whitespace-pre-wrap">{item.content}</p>

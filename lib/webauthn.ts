@@ -16,7 +16,7 @@ export interface PasskeyCredential {
     userHandle?: string
   }
   authenticatorAttachment?: string
-  clientExtensionResults?: Record<string, unknown>
+  clientExtensionResults?: AuthenticationExtensionsClientOutputs
 }
 
 export interface RegistrationOptions {
@@ -80,7 +80,6 @@ export async function isConditionalUISupported(): Promise<boolean> {
   if (!isWebAuthnSupported()) return false
   
   try {
-    // @ts-expect-error - isConditionalMediationAvailable may not be in types yet
     return await PublicKeyCredential.isConditionalMediationAvailable?.() ?? false
   } catch {
     return false

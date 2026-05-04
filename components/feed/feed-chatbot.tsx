@@ -176,10 +176,10 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
                     {ollamaAvailable ? (
                       <>
                         <Zap className="h-4 w-4" />
-                        Mistral (Local)
+                        Qwen (Local)
                       </>
                     ) : (
-                      'Mistral (Local) - No disponible'
+                      'Qwen (Local) - No disponible'
                     )}
                   </span>
                 </SelectItem>
@@ -198,12 +198,12 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
           )}
           {model === 'ollama' && ollamaAvailable && (
             <p className="text-xs text-muted-foreground mt-2">
-              Usando modelo Mistral local en http://localhost:11434
+              Usando modelo qwen:0.5b local en http://localhost:11434
             </p>
           )}
           {!ollamaAvailable && model !== 'openrouter' && (
             <p className="text-xs text-muted-foreground mt-2">
-              💡 Instala Ollama y descarga Mistral para usar modelos locales
+              💡 Instala Ollama y descarga qwen:0.5b para usar modelos locales
             </p>
           )}
         </SheetHeader>

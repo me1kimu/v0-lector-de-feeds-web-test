@@ -75,8 +75,8 @@ async function selectWorkingModel(preferOllama: boolean): Promise<{ model: Langu
       const modelId = cachedId.replace('openrouter:', '')
       return { model: createOpenRouterClient()(modelId), id: cachedId }
     }
-    if (cachedId === 'ollama:mistral') {
-      return { model: createOllamaClient()('mistral'), id: cachedId }
+    if (cachedId === 'ollama:qwen:0.5b') {
+      return { model: createOllamaClient()('qwen:0.5b'), id: cachedId }
     }
     if (cachedId === 'gemini:flash') {
       return { model: google('gemini-2.0-flash'), id: cachedId }
@@ -89,8 +89,8 @@ async function selectWorkingModel(preferOllama: boolean): Promise<{ model: Langu
   // If user prefers Ollama, try it first
   if (preferOllama) {
     attempts.push({
-      id: 'ollama:mistral',
-      build: () => createOllamaClient()('mistral'),
+      id: 'ollama:qwen:0.5b',
+      build: () => createOllamaClient()('qwen:0.5b'),
     })
   }
   
@@ -107,8 +107,8 @@ async function selectWorkingModel(preferOllama: boolean): Promise<{ model: Langu
   // Ollama fallback (if not preferred)
   if (!preferOllama) {
     attempts.push({
-      id: 'ollama:mistral',
-      build: () => createOllamaClient()('mistral'),
+      id: 'ollama:qwen:0.5b',
+      build: () => createOllamaClient()('qwen:0.5b'),
     })
   }
   

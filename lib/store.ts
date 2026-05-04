@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import type { FeedSource, FeedItem, UserSettings, Notification, SourceType } from './types'
 import * as db from './db'
+import { logger } from './logger'
 
 interface AuthUser {
   id: string
@@ -193,6 +194,7 @@ logger.error('Store', 'Error syncing with cloud', error)
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            id: source.id,
             source_type: source.type,
             name: source.name,
             url: source.url,
@@ -400,30 +402,33 @@ logger.error('Store', 'Error syncing with cloud', error)
       const data = await response.json()
       const items = data.items || []
       
-      // Sync items to database
-      if (items.length > 0) {
-        const syncResponse = await fetch('/api/feeds/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            source,
-            items,
-            updateExisting: true
+      // Sync items to cloud database if authenticated
+      if (items.length > 0 && get().isAuthenticated) {
+        try {
+          const syncResponse = await fetch('/api/feeds/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              source,
+              items,
+              updateExisting: true
+            })
           })
-        })
-        
-        if (!syncResponse.ok) {
-          const syncError = await syncResponse.json()
-          console.error('[Store] Sync error:', syncError)
-          throw new Error(`Sync failed: ${syncError.details}`)
+          
+          if (!syncResponse.ok) {
+            const syncError = await syncResponse.json().catch(() => ({ details: 'Unknown sync error' }))
+            console.error('[Store] Cloud sync error:', syncError)
+          } else {
+            const syncData = await syncResponse.json()
+            console.log('[Store] Sync result:', {
+              added: syncData.data.itemsAdded,
+              updated: syncData.data.itemsUpdated,
+              skipped: syncData.data.itemsSkipped
+            })
+          }
+        } catch (syncErr) {
+          console.error('[Store] Cloud sync fetch failed:', syncErr)
         }
-        
-        const syncData = await syncResponse.json()
-        console.log('[Store] Sync result:', {
-          added: syncData.data.itemsAdded,
-          updated: syncData.data.itemsUpdated,
-          skipped: syncData.data.itemsSkipped
-        })
       }
       
       // Add items to local store

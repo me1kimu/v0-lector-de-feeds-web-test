@@ -86,7 +86,7 @@ export async function syncFeedItems(
 
   if (logError) {
     console.error('[FeedSync] Failed to create sync log:', logError)
-    throw new Error('Failed to create sync log')
+    throw new Error(`Failed to create sync log: ${logError.message || JSON.stringify(logError)}`)
   }
 
   const syncLogId = syncLog.id
@@ -251,7 +251,7 @@ export async function syncFeedItems(
     // Update sync log with error
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const errorStack = error instanceof Error ? error.stack : ''
-    console.log('[v0] FeedSync: Sync failed for source', sourceId, errorMessage, errorStack, error)
+    console.log('[v0] FeedSync: Sync failed for source', options.sourceId, errorMessage, errorStack, error)
     
     const { error: updateLogError } = await supabase
       .from('feed_sync_logs')

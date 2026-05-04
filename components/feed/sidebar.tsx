@@ -219,32 +219,7 @@ export function Sidebar({ collapsed = false, onOpenChat }: SidebarProps) {
         </nav>
       </ScrollArea>
       
-      {/* Footer */}
-      <div className="border-t border-border p-2">
-        <button
-          onClick={() => setNotificationsOpen(true)}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-        >
-          <Bell className="h-4 w-4" />
-          {!collapsed && (
-            <>
-              <span className="flex-1 text-left">Notificaciones</span>
-              {unreadCount > 0 && (
-                <Badge variant="destructive" className="text-xs">
-                  {unreadCount}
-                </Badge>
-              )}
-            </>
-          )}
-        </button>
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-        >
-          <Settings className="h-4 w-4" />
-          {!collapsed && <span>Configuración</span>}
-        </button>
-      </div>
+
     </aside>
   )
 }

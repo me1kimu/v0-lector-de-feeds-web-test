@@ -2,7 +2,6 @@
 
 import { create } from 'zustand'
 import type { FeedSource, FeedItem, UserSettings, Notification, SourceType } from './types'
-import * as db from './db'
 import { logger } from './logger'
 
 interface AuthUser {
@@ -18,6 +17,7 @@ interface FeedStore {
   settings: UserSettings
   notifications: Notification[]
   isLoading: boolean
+  itemsLoading: boolean
   activeFilter: SourceType | 'all'
   activeSourceId: string | null
   settingsOpen: boolean
@@ -32,17 +32,16 @@ interface FeedStore {
   
   // Auth
   setUser: (user: AuthUser | null) => void
-  syncWithCloud: () => Promise<void>
   
   // Sources
   loadSources: () => Promise<void>
   addSource: (source: FeedSource) => Promise<void>
   updateSource: (id: string, updates: Partial<FeedSource>) => Promise<void>
   deleteSource: (id: string) => Promise<void>
+  deleteAllSources: () => Promise<void>
   
   // Items
   loadItems: (options?: { sourceId?: string; sourceType?: string; limit?: number }) => Promise<void>
-  addItems: (items: FeedItem[]) => Promise<void>
   setActiveFilter: (filter: SourceType | 'all') => void
   setActiveSourceId: (id: string | null) => void
   
@@ -77,6 +76,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   },
   notifications: [],
   isLoading: false,
+  itemsLoading: false,
   activeFilter: 'all',
   activeSourceId: null,
   settingsOpen: false,
@@ -85,200 +85,189 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   isAuthenticated: false,
   
   initialize: async () => {
+    const { isAuthenticated } = get()
+    if (!isAuthenticated) return
+
     set({ isLoading: true })
-    await Promise.all([
-      get().loadSources(),
-      get().loadSettings(),
-      get().loadNotifications()
-    ])
-    await get().loadItems({ limit: 100 })
-    set({ isLoading: false })
+    try {
+      // Load essential UI data first
+      await Promise.all([
+        get().loadSources(),
+        get().loadSettings(),
+        get().loadNotifications()
+      ])
+      
+      // Clear main loading state so UI appears
+      set({ isLoading: false })
+      
+      // Load items in the background
+      await get().loadItems({ limit: 100 })
+    } catch (error) {
+      logger.error('Store', 'Error during initialization', error)
+      set({ isLoading: false })
+    }
   },
   
   setUser: (user) => {
+    const wasAuthenticated = get().isAuthenticated
     set({ user, isAuthenticated: !!user })
-    if (user) {
-      // Sync with cloud when user logs in
-      get().syncWithCloud()
-    }
-  },
-  
-  syncWithCloud: async () => {
-    const { user } = get()
-    if (!user) return
     
-    try {
-      // Fetch sources from cloud
-      const sourcesRes = await fetch('/api/user/sources')
-      if (sourcesRes.ok) {
-        const text = await sourcesRes.text()
-        if (text && text.trim()) {
-          try {
-            const { sources: cloudSources } = JSON.parse(text)
-            
-            // Merge cloud sources with local (cloud takes precedence)
-            for (const cloudSource of cloudSources || []) {
-              let credentials = undefined
-              if (cloudSource.encrypted_credentials) {
-                try {
-                  credentials = JSON.parse(cloudSource.encrypted_credentials)
-                } catch {
-                  // Credentials might be already an object or invalid
-                  credentials = cloudSource.encrypted_credentials
-                }
-              }
-              
-              const localSource: FeedSource = {
-                id: cloudSource.id,
-                type: (cloudSource.type || cloudSource.source_type) as SourceType,
-                name: cloudSource.name,
-                url: cloudSource.url,
-                credentials,
-                refreshInterval: cloudSource.refresh_interval,
-                enabled: cloudSource.enabled,
-                lastFetched: cloudSource.last_fetched_at 
-                  ? new Date(cloudSource.last_fetched_at).getTime() 
-                  : undefined,
-              }
-              await db.addSource(localSource)
-            }
-          } catch (parseError) {
-            console.error('Failed to parse sources response:', parseError)
-          }
-        }
-      }
-      
-      // Fetch settings from cloud
-      const settingsRes = await fetch('/api/user/settings')
-      if (settingsRes.ok) {
-        const text = await settingsRes.text()
-        if (text && text.trim()) {
-          try {
-            const { settings: cloudSettings } = JSON.parse(text)
-            if (cloudSettings) {
-              await db.updateSettings({
-                theme: cloudSettings.theme,
-                showExternalMedia: cloudSettings.show_media,
-                notificationsEnabled: cloudSettings.notifications_enabled,
-              })
-            }
-          } catch (parseError) {
-            console.error('Failed to parse settings response:', parseError)
-          }
-        }
-      }
-      
-      // Reload local state
-      await get().loadSources()
-      await get().loadSettings()
-      
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Unknown error'
-logger.error('Store', 'Error syncing with cloud', error)
-  }
+    if (user && !wasAuthenticated) {
+      get().initialize()
+    } else if (!user) {
+      set({ sources: [], items: [], notifications: [] })
+    }
   },
   
   loadSources: async () => {
-    const sources = await db.getSources()
-    set({ sources })
+    const { isAuthenticated } = get()
+    if (!isAuthenticated) return
+
+    try {
+      const res = await fetch('/api/user/sources')
+      if (res.ok) {
+        const { sources: cloudSources } = await res.json()
+        const sources: FeedSource[] = (cloudSources || []).map((cs: any) => ({
+          id: cs.id,
+          type: cs.type as SourceType,
+          name: cs.name,
+          url: cs.url,
+          refreshInterval: cs.refresh_interval,
+          enabled: cs.enabled,
+          lastFetched: cs.last_fetched_at ? new Date(cs.last_fetched_at).getTime() : undefined,
+        }))
+        set({ sources })
+      }
+    } catch (error) {
+      logger.error('Store', 'Error loading sources', error)
+    }
   },
   
   addSource: async (source) => {
-    await db.addSource(source)
-    
-    // Sync to cloud if authenticated
-    const { user } = get()
-    if (user) {
-      try {
-        await fetch('/api/user/sources', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: source.id,
-            source_type: source.type,
-            name: source.name,
-            url: source.url,
-            encrypted_credentials: source.credentials 
-              ? JSON.stringify(source.credentials) 
-              : null,
-            refresh_interval: source.refreshInterval,
-            enabled: source.enabled,
-          }),
-        })
-      } catch (error) {
-        console.error('Cloud sync error:', error)
+    const { isAuthenticated } = get()
+    if (!isAuthenticated) return
+
+    try {
+      const res = await fetch('/api/user/sources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_type: source.type,
+          name: source.name,
+          url: source.url,
+          encrypted_credentials: source.credentials ? JSON.stringify(source.credentials) : null,
+          refresh_interval: source.refreshInterval,
+          enabled: source.enabled,
+        }),
+      })
+      
+      if (res.ok) {
+        await get().loadSources()
       }
+    } catch (error) {
+      logger.error('Store', 'Error adding source', error)
     }
-    
-    await get().loadSources()
   },
   
   updateSource: async (id, updates) => {
-    await db.updateSource(id, updates)
-    
-    // Sync to cloud if authenticated
-    const { user } = get()
-    if (user) {
-      try {
-        await fetch('/api/user/sources', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id,
-            source_type: updates.type,
-            name: updates.name,
-            url: updates.url,
-            encrypted_credentials: updates.credentials 
-              ? JSON.stringify(updates.credentials) 
-              : undefined,
-            refresh_interval: updates.refreshInterval,
-            enabled: updates.enabled,
-            last_fetched_at: updates.lastFetched 
-              ? new Date(updates.lastFetched).toISOString() 
-              : undefined,
-          }),
-        })
-      } catch (error) {
-        console.error('Cloud sync error:', error)
+    const { isAuthenticated } = get()
+    if (!isAuthenticated) return
+
+    try {
+      const res = await fetch('/api/user/sources', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          source_type: updates.type,
+          name: updates.name,
+          url: updates.url,
+          refresh_interval: updates.refreshInterval,
+          enabled: updates.enabled,
+        }),
+      })
+      
+      if (res.ok) {
+        await get().loadSources()
       }
+    } catch (error) {
+      logger.error('Store', 'Error updating source', error)
     }
-    
-    await get().loadSources()
   },
   
   deleteSource: async (id) => {
-    await db.deleteSource(id)
-    
-    // Sync to cloud if authenticated
-    const { user } = get()
-    if (user) {
-      try {
-        await fetch(`/api/user/sources?id=${id}`, {
-          method: 'DELETE',
-        })
-      } catch (error) {
-        console.error('Cloud sync error:', error)
+    const { isAuthenticated } = get()
+    if (!isAuthenticated) return
+
+    try {
+      const res = await fetch(`/api/user/sources?id=${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (res.ok) {
+        await get().loadSources()
+        await get().loadItems({ limit: 100 })
       }
+    } catch (error) {
+      logger.error('Store', 'Error deleting source', error)
     }
-    
-    await get().loadSources()
-    await get().loadItems({ limit: 100 })
+  },
+  
+  deleteAllSources: async () => {
+    const { isAuthenticated } = get()
+    if (!isAuthenticated) return
+
+    try {
+      const res = await fetch('/api/user/sources?deleteAll=true', {
+        method: 'DELETE',
+      })
+      
+      if (res.ok) {
+        set({ sources: [], items: [] })
+      }
+    } catch (error) {
+      logger.error('Store', 'Error deleting all sources', error)
+    }
   },
   
   loadItems: async (options) => {
-    const { activeFilter, activeSourceId } = get()
-    const queryOptions = {
-      ...options,
-      sourceId: activeSourceId ?? options?.sourceId,
-      sourceType: activeSourceId ? undefined : (activeFilter !== 'all' ? activeFilter : options?.sourceType)
+    const { isAuthenticated, activeFilter, activeSourceId } = get()
+    if (!isAuthenticated) return
+
+    set({ itemsLoading: true })
+    try {
+      const params = new URLSearchParams()
+      if (activeSourceId) params.append('sourceId', activeSourceId)
+      if (activeFilter !== 'all') params.append('sourceType', activeFilter)
+      if (options?.limit) params.append('limit', options.limit.toString())
+
+      const res = await fetch(`/api/user/items?${params.toString()}`)
+      if (res.ok) {
+        const { items: cloudItems } = await res.json()
+        const items: FeedItem[] = (cloudItems || []).map((ci: any) => ({
+          id: ci.external_id || ci.id,
+          sourceId: ci.source_id,
+          sourceType: ci.source_type,
+          sourceName: ci.source_name,
+          title: ci.title,
+          content: ci.content,
+          contentHtml: ci.content_html,
+          url: ci.item_url,
+          author: {
+            name: ci.author_name,
+            url: ci.author_url,
+          },
+          publishedAt: new Date(ci.published_at).getTime(),
+          media: (ci.media_urls || []).map((url: string) => ({ url, type: 'image' })),
+          raw: {}
+        }))
+        set({ items })
+      }
+    } catch (error) {
+      logger.error('Store', 'Error loading items', error)
+    } finally {
+      set({ itemsLoading: false })
     }
-    const items = await db.getItems(queryOptions)
-    set({ items })
-  },
-  
-  addItems: async (items) => {
-    await db.addItems(items)
-    await get().loadItems({ limit: 100 })
   },
   
   setActiveFilter: (filter) => {
@@ -292,49 +281,66 @@ logger.error('Store', 'Error syncing with cloud', error)
   },
   
   loadSettings: async () => {
-    const settings = await db.getSettings()
-    set({ settings })
-    
-    // Apply theme
-    if (typeof window !== 'undefined') {
-      const root = document.documentElement
-      if (settings.theme === 'dark') {
-        root.classList.add('dark')
-      } else if (settings.theme === 'light') {
-        root.classList.remove('dark')
-      } else {
-        // System preference
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          root.classList.add('dark')
-        } else {
-          root.classList.remove('dark')
+    const { isAuthenticated } = get()
+    if (!isAuthenticated) return
+
+    try {
+      const res = await fetch('/api/user/settings')
+      if (res.ok) {
+        const { settings: cloudSettings } = await res.json()
+        if (cloudSettings) {
+          const settings: UserSettings = {
+            theme: cloudSettings.theme || 'system',
+            showExternalMedia: cloudSettings.show_media ?? true,
+            compactMode: false,
+            notificationsEnabled: cloudSettings.notifications_enabled ?? true,
+            defaultRefreshInterval: 15
+          }
+          set({ settings })
+          
+          // Apply theme
+          if (typeof window !== 'undefined') {
+            const root = document.documentElement
+            if (settings.theme === 'dark') {
+              root.classList.add('dark')
+            } else if (settings.theme === 'light') {
+              root.classList.remove('dark')
+            } else {
+              if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                root.classList.add('dark')
+              } else {
+                root.classList.remove('dark')
+              }
+            }
+          }
         }
       }
+    } catch (error) {
+      logger.error('Store', 'Error loading settings', error)
     }
   },
   
   updateSettings: async (newSettings) => {
-    await db.updateSettings(newSettings)
-    
-    // Sync to cloud if authenticated
-    const { user } = get()
-    if (user) {
-      try {
-        await fetch('/api/user/settings', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            theme: newSettings.theme,
-            show_media: newSettings.showExternalMedia,
-            notifications_enabled: newSettings.notificationsEnabled,
-          }),
-        })
-      } catch (error) {
-        console.error('Cloud sync error:', error)
+    const { isAuthenticated } = get()
+    if (!isAuthenticated) return
+
+    try {
+      const res = await fetch('/api/user/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          theme: newSettings.theme,
+          show_media: newSettings.showExternalMedia,
+          notifications_enabled: newSettings.notificationsEnabled,
+        }),
+      })
+      
+      if (res.ok) {
+        await get().loadSettings()
       }
+    } catch (error) {
+      logger.error('Store', 'Error updating settings', error)
     }
-    
-    await get().loadSettings()
   },
   
   setSettingsOpen: (open) => {
@@ -346,8 +352,9 @@ logger.error('Store', 'Error syncing with cloud', error)
   },
   
   loadNotifications: async () => {
-    const notifications = await db.getNotifications()
-    set({ notifications })
+    // Current implementation doesn't have a notifications API, 
+    // we might want to add one or keep it in-memory for now
+    // For now, let's just use local state
   },
   
   addNotification: async (notification) => {
@@ -357,8 +364,9 @@ logger.error('Store', 'Error syncing with cloud', error)
       timestamp: Date.now(),
       read: false
     }
-    await db.addNotification(fullNotification)
-    await get().loadNotifications()
+    set(state => ({
+      notifications: [fullNotification, ...state.notifications].slice(0, 50)
+    }))
     
     // Show browser notification if enabled
     const { settings } = get()
@@ -368,13 +376,15 @@ logger.error('Store', 'Error syncing with cloud', error)
   },
   
   markNotificationRead: async (id) => {
-    await db.markNotificationRead(id)
-    await get().loadNotifications()
+    set(state => ({
+      notifications: state.notifications.map(n => n.id === id ? { ...n, read: true } : n)
+    }))
   },
   
   markAllNotificationsRead: async () => {
-    await db.markAllNotificationsRead()
-    await get().loadNotifications()
+    set(state => ({
+      notifications: state.notifications.map(n => ({ ...n, read: true }))
+    }))
   },
   
   clearNotification: async (id) => {
@@ -384,7 +394,10 @@ logger.error('Store', 'Error syncing with cloud', error)
   },
   
   refreshSource: async (sourceId) => {
-    const source = get().sources.find(s => s.id === sourceId)
+    const { isAuthenticated, sources } = get()
+    if (!isAuthenticated) return
+
+    const source = sources.find(s => s.id === sourceId)
     if (!source || !source.enabled) return
     
     try {
@@ -395,72 +408,58 @@ logger.error('Store', 'Error syncing with cloud', error)
       })
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(errorData.details || errorData.error || `HTTP ${response.status}`)
+        const errData = await response.json().catch(() => null)
+        throw new Error(errData?.error || `HTTP ${response.status}`)
       }
       
       const data = await response.json()
       const items = data.items || []
       
-      // Sync items to cloud database if authenticated
-      if (items.length > 0 && get().isAuthenticated) {
-        try {
-          const syncResponse = await fetch('/api/feeds/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              source,
-              items,
-              updateExisting: true
-            })
-          })
-          
-          if (!syncResponse.ok) {
-            const syncError = await syncResponse.json().catch(() => ({ details: 'Unknown sync error' }))
-            console.error('[Store] Cloud sync error:', syncError)
-          } else {
-            const syncData = await syncResponse.json()
-            console.log('[Store] Sync result:', {
-              added: syncData.data.itemsAdded,
-              updated: syncData.data.itemsUpdated,
-              skipped: syncData.data.itemsSkipped
-            })
-          }
-        } catch (syncErr) {
-          console.error('[Store] Cloud sync fetch failed:', syncErr)
-        }
-      }
-      
-      // Add items to local store
       if (items.length > 0) {
-        await get().addItems(items)
+        // Sync items to cloud
+        await fetch('/api/feeds/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source,
+            items,
+            updateExisting: true
+          })
+        })
+        
+        await get().loadItems({ limit: 100 })
       }
       
-      await get().updateSource(sourceId, { lastFetched: Date.now() })
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Error desconocido'
-logger.error('Store', `Error refreshing ${source?.type || 'unknown'} feed`, error)
-    await get().addNotification({
-      type: 'error',
-      title: 'Error de actualizacion',
-      message: `${source?.name || 'Feed'}: ${errorMsg}`,
-      sourceId
-    })
-  }
+      // Update last fetched timestamp
+      await fetch('/api/user/sources', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: sourceId,
+          last_fetched_at: new Date().toISOString()
+        })
+      })
+      
+      await get().loadSources()
+    } catch (error) {
+      logger.warn('Store', `Error refreshing ${source?.type} feed: ${source?.name}`, undefined, error instanceof Error ? error : new Error(String(error)))
+    }
   },
   
   refreshAllSources: async () => {
+    const { isAuthenticated, sources } = get()
+    if (!isAuthenticated) return
+
     set({ isLoading: true })
-    const sources = get().sources.filter(s => s.enabled)
-    await Promise.allSettled(sources.map(s => get().refreshSource(s.id)))
+    const activeSources = sources.filter(s => s.enabled)
+    await Promise.allSettled(activeSources.map(s => get().refreshSource(s.id)))
     set({ isLoading: false })
   },
   
   refreshWithContext: async () => {
-    const activeSourceId = get().activeSourceId
+    const { activeSourceId } = get()
     
     if (activeSourceId) {
-      // Refresh only the selected source
       set({ isLoading: true })
       try {
         await get().refreshSource(activeSourceId)
@@ -468,7 +467,6 @@ logger.error('Store', `Error refreshing ${source?.type || 'unknown'} feed`, erro
         set({ isLoading: false })
       }
     } else {
-      // Refresh all sources when no specific source is selected
       await get().refreshAllSources()
     }
   },

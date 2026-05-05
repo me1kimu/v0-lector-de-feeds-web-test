@@ -62,7 +62,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get RP ID - use localhost for development, otherwise extract registrable domain
-    const urlHostname = new URL(request.url).hostname
+    const requestUrl = new URL(request.url)
+    const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.hostname
+    const urlHostname = hostHeader.split(':')[0]
+    
     const rpId = urlHostname === 'localhost' || urlHostname.includes('127.0.0.1')
       ? 'localhost'
       : urlHostname // For vusercontent.net or production domains

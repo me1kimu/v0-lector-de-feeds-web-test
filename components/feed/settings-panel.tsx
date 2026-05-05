@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useFeedStore } from '@/lib/store'
 import type { FeedSource, SourceType, SourceCredentials } from '@/lib/types'
+import { sourceTypeOptions, sourceTypeIcons, getSourceSubtitle } from '@/lib/source-utils'
 import { 
   Sheet, 
   SheetContent, 
@@ -68,14 +69,7 @@ import {
   Play
 } from 'lucide-react'
 
-const sourceTypeOptions: { value: SourceType; label: string; icon: React.ReactNode; description?: string }[] = [
-  { value: 'rss', label: 'RSS Feed', icon: <Rss className="h-4 w-4" /> },
-  { value: 'mastodon', label: 'Mastodon', icon: <AtSign className="h-4 w-4" /> },
-  { value: 'bluesky', label: 'Bluesky', icon: <CloudSun className="h-4 w-4" /> },
-  { value: 'youtube', label: 'YouTube', icon: <Play className="h-4 w-4" />, description: 'Canal o usuario' },
-  { value: 'twitter', label: 'Twitter/X', icon: <Twitter className="h-4 w-4" />, description: 'Solo perfiles públicos' },
-  { value: 'instagram', label: 'Instagram', icon: <Camera className="h-4 w-4" />, description: 'Solo perfiles públicos' },
-]
+
 
 interface AddSourceFormProps {
   onAdd: (source: FeedSource) => void
@@ -344,25 +338,7 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
   const [credentials, setCredentials] = useState<SourceCredentials>(source.credentials || {})
   const [showCredentials, setShowCredentials] = useState(false)
 
-  const icon: Record<SourceType, React.ReactNode> = {
-    rss: <Rss className="h-4 w-4" />,
-    mastodon: <AtSign className="h-4 w-4" />,
-    bluesky: <CloudSun className="h-4 w-4" />,
-    youtube: <Play className="h-4 w-4" />,
-    pixelfed: <Layers className="h-4 w-4" />,
-    instagram: <Camera className="h-4 w-4" />,
-    twitter: <Twitter className="h-4 w-4" />,
-    inkbunny: <Layers className="h-4 w-4" />,
-    finance: <Layers className="h-4 w-4" />
-  }
-
-  const subtitle = source.type === 'mastodon'
-    ? source.credentials?.instance
-    : (source.type === 'twitter' || source.type === 'instagram')
-      ? source.credentials?.handle ? `@${source.credentials.handle}` : source.url
-      : (source.type === 'bluesky' || source.type === 'youtube')
-        ? source.credentials?.handle || source.url
-        : source.url
+  const subtitle = getSourceSubtitle(source)
 
   const handleSave = () => {
     onUpdate(source.id, {
@@ -388,7 +364,7 @@ function SourceItem({ source, onUpdate, onDelete }: SourceItemProps) {
       <CardHeader className="p-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-secondary flex-shrink-0">
-            {icon[source.type]}
+            {sourceTypeIcons[source.type]}
           </div>
           <div className="flex-1 min-w-0">
             <CardTitle className="text-base truncate">{source.name}</CardTitle>
@@ -606,16 +582,17 @@ export function SettingsPanel() {
     sources,
     addSource,
     updateSource,
-    deleteSource
+    deleteSource,
+    deleteAllSources
   } = useFeedStore()
   
   const [showAddForm, setShowAddForm] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const { loadSources, syncWithCloud } = useFeedStore()
+  const { loadSources } = useFeedStore()
   const [importProgress, setImportProgress] = useState<number | null>(null)
   const [importStatusText, setImportStatusText] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewItems, setPreviewItems] = useState<Array<{ title?: string; url?: string }>>([])
+  const [previewItems, setPreviewItems] = useState<Array<{ title?: string; url?: string; htmlUrl?: string }>>([])
   const isImportingPreview = importProgress !== null
   const toastState = useToast()
   
@@ -679,14 +656,15 @@ export function SettingsPanel() {
                       // Parse OPML in client using DOMParser to extract outlines
                       const parser = new DOMParser()
                       const doc = parser.parseFromString(text, 'application/xml')
-                      const outlines: Array<{ title?: string; url?: string }> = []
+                      const outlines: Array<{ title?: string; url?: string; htmlUrl?: string }> = []
 
                       function walk(node: Element) {
                         if (node.tagName && node.tagName.toLowerCase() === 'outline') {
                           const xmlUrl =
                             node.getAttribute('xmlUrl') || node.getAttribute('xmlurl') || node.getAttribute('url') || undefined
                           const title = node.getAttribute('title') || node.getAttribute('text') || undefined
-                          if (xmlUrl) outlines.push({ title: title || undefined, url: xmlUrl })
+                          const htmlUrl = node.getAttribute('htmlUrl') || node.getAttribute('htmlurl') || undefined
+                          if (xmlUrl) outlines.push({ title: title || undefined, url: xmlUrl, htmlUrl })
                         }
                         node.childNodes.forEach((child) => {
                           if ((child as Element).tagName) walk(child as Element)
@@ -750,6 +728,32 @@ export function SettingsPanel() {
                 >
                   Exportar OPML
                 </Button>
+                {sources.length > 0 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="ml-auto">
+                        Eliminar todas
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar todas las fuentes?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          ¿Estás seguro de eliminar todas las fuentes? Esto no se puede deshacer.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={async () => {
+                          await deleteAllSources()
+                          toastState.toast({ title: 'Fuentes eliminadas', description: 'Todas las fuentes han sido eliminadas' })
+                        }}>
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             )}
             
@@ -837,7 +841,7 @@ export function SettingsPanel() {
 
                     setImportStatusText(`Finalizado. Insertadas: ${totalInserted}. Omitidas: ${totalSkipped}`)
                     toastState.toast({ title: 'Import OPML', description: `Insertadas: ${totalInserted}. Omitidas: ${totalSkipped}` })
-                    await syncWithCloud()
+                    await loadSources()
                     setTimeout(() => {
                       setImportProgress(null)
                       setImportStatusText(null)

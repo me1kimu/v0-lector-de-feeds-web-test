@@ -15,14 +15,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { source } = body as { source: FeedSource }
     
-    if (!source?.credentials?.handle) {
+    let handle = source?.credentials?.handle
+    if (!handle && source?.url) {
+      try {
+        const urlObj = new URL(source.url)
+        const parts = urlObj.pathname.split('/').filter(Boolean)
+        if (parts.length > 0) handle = parts[0]
+      } catch (e) {
+        handle = source.url
+      }
+    }
+
+    if (!handle) {
       return NextResponse.json(
         { error: 'Twitter username is required' },
         { status: 400 }
       )
     }
     
-    const username = source.credentials.handle.replace('@', '')
+    const username = handle.replace('@', '')
     
     // Try different Nitter instances until one works
     let xmlText: string | null = null

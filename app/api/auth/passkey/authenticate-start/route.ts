@@ -68,8 +68,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate WebAuthn authentication options
+    const requestUrl = new URL(request.url)
+    const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.hostname
+    const dynamicRpId = hostHeader.split(':')[0]
+
     const options = await generateAuthenticationOptions({
-      rpID: RP_ID,
+      rpID: dynamicRpId,
       allowCredentials: credentials.map(cred => ({
         id: Buffer.from(cred.credential_id, 'base64url'),
         type: 'public-key' as const,

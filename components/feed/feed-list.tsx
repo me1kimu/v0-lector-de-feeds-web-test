@@ -14,6 +14,7 @@ export function FeedList() {
     items, 
     sources,
     isLoading, 
+    itemsLoading,
     settings,
     activeFilter,
     activeSourceId,
@@ -85,16 +86,16 @@ export function FeedList() {
           variant="outline" 
           size="sm" 
           onClick={refreshAllSources}
-          disabled={isLoading}
+          disabled={itemsLoading}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 mr-2 ${itemsLoading ? 'animate-spin' : ''}`} />
           Actualizar
         </Button>
       </header>
       
       {/* Feed */}
       <div className="flex-1 overflow-y-auto">
-        {isLoading && items.length === 0 ? (
+        {(isLoading || itemsLoading) && items.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <Spinner className="h-8 w-8 text-primary" />
           </div>

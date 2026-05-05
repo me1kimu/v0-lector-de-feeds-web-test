@@ -4,6 +4,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { useFeedStore } from '@/lib/store'
 import type { SourceType } from '@/lib/types'
+import { sourceTypeIcons, sourceTypeLabels } from '@/lib/source-utils'
 import { 
   Rss, 
   AtSign, 
@@ -22,29 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
-const sourceTypeIcons: Record<SourceType, React.ReactNode> = {
-  rss: <Rss className="h-4 w-4" />,
-  mastodon: <AtSign className="h-4 w-4" />,
-  bluesky: <CloudSun className="h-4 w-4" />,
-  youtube: <Play className="h-4 w-4" />,
-  pixelfed: <Layers className="h-4 w-4" />,
-  instagram: <Camera className="h-4 w-4" />,
-  twitter: <Twitter className="h-4 w-4" />,
-  inkbunny: <Layers className="h-4 w-4" />,
-  finance: <Layers className="h-4 w-4" />
-}
 
-const sourceTypeLabels: Record<SourceType, string> = {
-  rss: 'RSS',
-  mastodon: 'Mastodon',
-  bluesky: 'Bluesky',
-  youtube: 'YouTube',
-  pixelfed: 'Pixelfed',
-  instagram: 'Instagram',
-  twitter: 'Twitter',
-  inkbunny: 'Inkbunny',
-  finance: 'Finanzas'
-}
 
 interface SidebarProps {
   collapsed?: boolean

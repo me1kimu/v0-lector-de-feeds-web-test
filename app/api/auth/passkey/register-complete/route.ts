@@ -36,11 +36,18 @@ export async function POST(request: NextRequest) {
 
     // Verify the credential attestation
     try {
+      const requestUrl = new URL(request.url)
+      const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.hostname
+      const dynamicRpId = hostHeader.split(':')[0]
+      const originHeader = request.headers.get('origin')
+      const protoHeader = request.headers.get('x-forwarded-proto') || 'http'
+      const expectedOrigin = originHeader || (dynamicRpId === 'localhost' ? `http://localhost:${hostHeader.split(':')[1] || '3000'}` : `${protoHeader}://${hostHeader}`)
+
       const verification = await verifyRegistrationResponse({
         response: credential,
         expectedChallenge: challenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID
+        expectedOrigin: expectedOrigin,
+        expectedRPID: dynamicRpId
       })
 
       if (!verification.verified) {

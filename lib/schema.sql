@@ -239,6 +239,7 @@ CREATE POLICY "Users can update own feed sync logs" ON public.feed_sync_logs
 CREATE INDEX IF NOT EXISTS idx_feed_items_user_id ON public.feed_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_feed_items_source_id ON public.feed_items(source_id);
 CREATE INDEX IF NOT EXISTS idx_feed_items_external_id ON public.feed_items(external_id);
+CREATE INDEX IF NOT EXISTS idx_feed_items_published_at ON public.feed_items(published_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_feed_sync_logs_user_id ON public.feed_sync_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_feed_sync_logs_source_id ON public.feed_sync_logs(source_id);

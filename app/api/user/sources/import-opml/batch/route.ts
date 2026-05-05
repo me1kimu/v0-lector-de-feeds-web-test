@@ -1,7 +1,19 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-type Item = { title?: string; url?: string }
+type Item = { title?: string; url?: string; htmlUrl?: string }
+
+function detectSourceType(url: string, htmlUrl?: string): string {
+  const combined = (url + ' ' + (htmlUrl || '')).toLowerCase();
+  if (combined.includes('instagram.com')) return 'instagram';
+  if (combined.includes('bsky.app') || combined.includes('bsky.social')) return 'bluesky';
+  if (combined.includes('youtube.com') || combined.includes('youtu.be')) return 'youtube';
+  if (combined.includes('twitter.com') || combined.includes('x.com')) return 'twitter';
+  if (combined.includes('mastodon') || combined.includes('mstdn')) return 'mastodon';
+  if (combined.includes('pixelfed')) return 'pixelfed';
+  if (combined.includes('inkbunny.net')) return 'inkbunny';
+  return 'rss';
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +37,8 @@ export async function POST(request: NextRequest) {
     for (const it of items) {
       const xmlUrl = (it.url || '').toString().trim()
       const title = (it.title || '').toString().trim()
+      const htmlUrl = (it.htmlUrl || '').toString().trim()
+      
       if (!xmlUrl) {
         skipped++
         continue
@@ -44,7 +58,7 @@ export async function POST(request: NextRequest) {
 
       const { error: insertErr } = await supabase.from('feed_sources').insert({
         user_id: user.id,
-        type: 'rss',
+        type: detectSourceType(xmlUrl, htmlUrl),
         name: title || xmlUrl,
         url: xmlUrl,
       })

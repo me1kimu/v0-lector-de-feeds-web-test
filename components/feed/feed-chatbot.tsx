@@ -13,6 +13,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from '@/components/ui/sheet'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -41,7 +42,6 @@ interface FeedChatbotProps {
 export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
   const { items } = useFeedStore()
   const [input, setInput] = useState('')
-  const [model, setModel] = useState<'openrouter' | 'ollama' | 'gemini'>('openrouter')
   const scrollRef = useRef<HTMLDivElement>(null)
   const [ollamaAvailable, setOllamaAvailable] = useState(false)
   
@@ -80,17 +80,11 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
       })
     }))
   
-  const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({ 
-      api: '/api/chat',
-      prepareSendMessagesRequest: ({ messages }) => ({
-        body: {
-          messages,
-          feedItems: latestItems,
-          useOllama: model === 'ollama'
-        }
-      })
-    }),
+  const { messages, append, status, setMessages } = useChat({
+    api: '/api/chat',
+    body: {
+      feedItems: latestItems
+    }
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
@@ -105,13 +99,13 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
-    sendMessage({ text: input })
+    append({ role: 'user', content: input })
     setInput('')
   }
   
   const handleSummarize = () => {
     if (isLoading) return
-    sendMessage({ text: 'Resume las ultimas publicaciones de mi feed. Destaca los temas principales y cualquier noticia importante.' })
+    append({ role: 'user', content: 'Resume las ultimas publicaciones de mi feed. Destaca los temas principales y cualquier noticia importante.' })
   }
 
   const handleClearChat = () => {
@@ -132,6 +126,9 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
               </div>
               <SheetTitle className="text-left">Asistente de Feed</SheetTitle>
             </div>
+            <SheetDescription className="sr-only">
+              Chatea con un asistente de inteligencia artificial para resumir tu feed de noticias.
+            </SheetDescription>
             {messages.length > 0 && (
               <Button 
                 variant="ghost" 
@@ -152,60 +149,25 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
             </Button>
           </div>
           
-          {/* Model selector */}
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Modelo:</span>
-            <Select 
-              value={model}
-              onValueChange={(value) => setModel(value as 'openrouter' | 'ollama' | 'gemini')}
-            >
-              <SelectTrigger className="w-56">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openrouter">
-                  <span className="flex items-center gap-2">
-                    ✨ Gemma 4 (OpenRouter - Gratis)
-                  </span>
-                </SelectItem>
-                <SelectItem 
-                  value="ollama" 
-                  disabled={!ollamaAvailable}
-                >
-                  <span className="flex items-center gap-2">
-                    {ollamaAvailable ? (
-                      <>
-                        <Zap className="h-4 w-4" />
-                        Qwen (Local)
-                      </>
-                    ) : (
-                      'Qwen (Local) - No disponible'
-                    )}
-                  </span>
-                </SelectItem>
-                <SelectItem value="gemini">
-                  <span className="flex items-center gap-2">
-                    ✨ Gemini Flash (Cloud)
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="mt-3">
+            <div className="inline-flex items-center gap-2 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
+              {ollamaAvailable ? (
+                <>
+                  <Zap className="h-3 w-3 text-yellow-500" />
+                  Prioridad: Ollama Local
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  Prioridad: Cloud (OpenRouter)
+                </>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              El asistente probará automáticamente modelos en este orden: <br/>
+              <b>1.</b> Qwen Local (Ollama) &rarr; <b>2.</b> OpenRouter &rarr; <b>3.</b> Gemini Cloud
+            </p>
           </div>
-          {model === 'openrouter' && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Usando Gemma 4 de OpenRouter (modelo gratuito)
-            </p>
-          )}
-          {model === 'ollama' && ollamaAvailable && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Usando modelo qwen:0.5b local en http://localhost:11434
-            </p>
-          )}
-          {!ollamaAvailable && model !== 'openrouter' && (
-            <p className="text-xs text-muted-foreground mt-2">
-              💡 Instala Ollama y descarga qwen:0.5b para usar modelos locales
-            </p>
-          )}
         </SheetHeader>
         
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>

@@ -90,18 +90,16 @@ async function selectWorkingModel(preferOllama: boolean): Promise<{ model: Langu
     }
   }
 
-  // Build attempt list based on preference
+  // Build attempt list based on priority: Ollama -> OpenRouter -> Gemini
   const attempts: Array<{ id: string; build: () => LanguageModel }> = []
   
-  // If user prefers Ollama, try it first
-  if (preferOllama) {
-    attempts.push({
-      id: 'ollama:qwen:0.5b',
-      build: () => createOllamaClient()('qwen:0.5b'),
-    })
-  }
+  // 1. Local Models (Ollama)
+  attempts.push({
+    id: 'ollama:qwen:0.5b',
+    build: () => createOllamaClient()('qwen:0.5b'),
+  })
   
-  // OpenRouter models (primary cascade)
+  // 2. OpenRouter models (First fallback cascade)
   if (process.env.OPENROUTER_API_KEY) {
     for (const modelId of OPENROUTER_FALLBACK_MODELS) {
       attempts.push({
@@ -111,15 +109,7 @@ async function selectWorkingModel(preferOllama: boolean): Promise<{ model: Langu
     }
   }
   
-  // Ollama fallback (if not preferred)
-  if (!preferOllama) {
-    attempts.push({
-      id: 'ollama:qwen:0.5b',
-      build: () => createOllamaClient()('qwen:0.5b'),
-    })
-  }
-  
-  // Gemini as last resort
+  // 3. Gemini (Second fallback)
   if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     attempts.push({
       id: 'gemini:flash',
@@ -149,13 +139,9 @@ async function selectWorkingModel(preferOllama: boolean): Promise<{ model: Langu
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  const { messages, feedItems, useOllama }: { messages: UIMessage[]; feedItems?: Array<{
-    title: string
-    author: string
-    source: string
-    content: string
-    publishedAt: string
-  }>; useOllama?: boolean } = await req.json()
+  const bodyText = await req.text()
+  console.log('[v0] Chat API received body:', bodyText.substring(0, 200) + '...')
+  const { messages, feedItems, useOllama } = JSON.parse(bodyText)
 
   // Build system prompt with feed context
   let systemPrompt = `Eres un asistente inteligente que ayuda a los usuarios a entender y resumir su feed de noticias y redes sociales.

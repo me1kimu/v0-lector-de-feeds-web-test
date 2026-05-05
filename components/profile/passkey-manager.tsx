@@ -79,6 +79,7 @@ export function PasskeyManager() {
           userId,
           email,
           displayName: displayName || email,
+          rpId: window.location.hostname,
         }),
       })
 
@@ -100,6 +101,7 @@ export function PasskeyManager() {
           credential,
           challenge: options.challenge,
           deviceName: deviceName || 'Unnamed device',
+          rpId: window.location.hostname,
         }),
       })
 

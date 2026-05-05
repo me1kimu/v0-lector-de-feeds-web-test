@@ -43,8 +43,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate WebAuthn registration options
+    const requestUrl = new URL(request.url)
+    const hostHeader = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.hostname
+    const dynamicRpId = hostHeader.split(':')[0]
+
     const options = await generateRegistrationOptions({
-      rpID: RP_ID,
+      rpID: dynamicRpId,
       rpName: RP_NAME,
       // simplewebauthn v13+ requires userID as bytes (Uint8Array), not string.
       userID: Buffer.from(userId, 'utf8'),
@@ -52,7 +56,6 @@ export async function POST(request: NextRequest) {
       userDisplayName: displayName || email,
       attestationType: 'direct',
       authenticatorSelection: {
-        authenticatorAttachment: 'platform',
         residentKey: 'preferred',
         userVerification: 'preferred'
       },
@@ -74,9 +77,10 @@ export async function POST(request: NextRequest) {
       challenge: options.challenge
     })
   } catch (error) {
-    console.error('[v0] Registration start error:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error(`[v0] Registration start error: Failed to start passkey registration - ${errorMessage}`)
     return NextResponse.json(
-      { error: 'Failed to start passkey registration' },
+      { error: 'Failed to start passkey registration', details: errorMessage },
       { status: 500 }
     )
   }

@@ -246,6 +246,10 @@ export async function syncFeedItems(
       }
     }
 
+    // Keep the feed focused on recent content by removing items older than the
+    // documented retention window.
+    await cleanupOldItems(user.id, 30)
+
     // Update sync log with results
     const syncStatus =
       errors.length === 0

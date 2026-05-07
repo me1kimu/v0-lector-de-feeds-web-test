@@ -25,14 +25,26 @@ function collectOutlines(node: any, out: any[] = []) {
 }
 
 function detectSourceType(url: string, htmlUrl?: string): string {
-  const combined = (url + ' ' + (htmlUrl || '')).toLowerCase();
-  if (combined.includes('instagram.com')) return 'instagram';
-  if (combined.includes('bsky.app') || combined.includes('bsky.social')) return 'bluesky';
-  if (combined.includes('youtube.com') || combined.includes('youtu.be')) return 'youtube';
-  if (combined.includes('twitter.com') || combined.includes('x.com')) return 'twitter';
-  if (combined.includes('mastodon') || combined.includes('mstdn')) return 'mastodon';
-  if (combined.includes('pixelfed')) return 'pixelfed';
-  if (combined.includes('inkbunny.net')) return 'inkbunny';
+  const candidates = [url, htmlUrl].flatMap((value) => {
+    if (!value) return []
+
+    try {
+      return [new URL(value).hostname.toLowerCase()]
+    } catch {
+      return [value.toLowerCase()]
+    }
+  })
+
+  const matchesHost = (host: string, domain: string) =>
+    host === domain || host.endsWith(`.${domain}`)
+
+  if (candidates.some((host) => matchesHost(host, 'instagram.com'))) return 'instagram';
+  if (candidates.some((host) => matchesHost(host, 'bsky.app') || matchesHost(host, 'bsky.social'))) return 'bluesky';
+  if (candidates.some((host) => matchesHost(host, 'youtube.com') || matchesHost(host, 'youtu.be'))) return 'youtube';
+  if (candidates.some((host) => matchesHost(host, 'twitter.com') || matchesHost(host, 'x.com') || host.startsWith('nitter.'))) return 'twitter';
+  if (candidates.some((host) => host.includes('mastodon') || host.includes('mstdn'))) return 'mastodon';
+  if (candidates.some((host) => host.includes('pixelfed'))) return 'pixelfed';
+  if (candidates.some((host) => matchesHost(host, 'inkbunny.net'))) return 'inkbunny';
   return 'rss';
 }
 

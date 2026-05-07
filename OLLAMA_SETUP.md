@@ -39,14 +39,14 @@ Si ves una respuesta JSON, ¡Ollama está funcionando!
 
 ## Uso en FeedReader
 
-Una vez que Ollama esté corriendo con Qwen descargado:
+Una vez que Ollama esté corriendo con al menos un modelo descargado:
 
 1. Abre el FeedReader
 2. Haz clic en el botón "Asistente IA" en el sidebar
-3. En el selector de modelo, aparecerá "Qwen (Local)"
-4. Selecciona Qwen para usar el modelo local
+3. En el selector de modelo, aparecerá el modelo local más potente disponible
+4. Selecciona ese modelo para usar la IA local
 
-### Ventajas del modelo local (Qwen)
+### Ventajas del modelo local
 
 ✅ **Privacidad**: Tus conversaciones nunca salen de tu computadora  
 ✅ **Velocidad**: Sin latencia de red  

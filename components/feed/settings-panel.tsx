@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { useFeedStore } from '@/lib/store'
 import type { FeedSource, SourceType, SourceCredentials } from '@/lib/types'
 import { sourceTypeOptions, sourceTypeIcons, getSourceSubtitle } from '@/lib/source-utils'
+import { PALETTE_OPTIONS } from '@/lib/theme'
 import { 
   Sheet, 
   SheetContent, 
@@ -66,8 +67,32 @@ import {
   Check,
   X,
   RefreshCw,
-  Play
+  Play,
+  Palette
 } from 'lucide-react'
+
+function detectSourceType(url: string, htmlUrl?: string): SourceType {
+  const candidates = [url, htmlUrl].flatMap((value) => {
+    if (!value) return []
+
+    try {
+      return [new URL(value).hostname.toLowerCase()]
+    } catch {
+      return [value.toLowerCase()]
+    }
+  })
+
+  const matchesHost = (host: string, domain: string) => host === domain || host.endsWith(`.${domain}`)
+
+  if (candidates.some((host) => matchesHost(host, 'instagram.com'))) return 'instagram'
+  if (candidates.some((host) => matchesHost(host, 'bsky.app') || matchesHost(host, 'bsky.social'))) return 'bluesky'
+  if (candidates.some((host) => matchesHost(host, 'youtube.com') || matchesHost(host, 'youtu.be'))) return 'youtube'
+  if (candidates.some((host) => matchesHost(host, 'twitter.com') || matchesHost(host, 'x.com') || host.startsWith('nitter.'))) return 'twitter'
+  if (candidates.some((host) => host.includes('mastodon') || host.includes('mstdn'))) return 'mastodon'
+  if (candidates.some((host) => host.includes('pixelfed'))) return 'pixelfed'
+  if (candidates.some((host) => matchesHost(host, 'inkbunny.net'))) return 'inkbunny'
+  return 'rss'
+}
 
 
 
@@ -603,7 +628,7 @@ export function SettingsPanel() {
   
   return (
     <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto px-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
@@ -805,49 +830,50 @@ export function SettingsPanel() {
                     <>
                       <Button variant="outline" onClick={() => setPreviewOpen(false)}>Cancelar</Button>
                       <Button onClick={async () => {
-                    // Start batch import
-                    setImportProgress(0)
-                    setImportStatusText('Iniciando importación...')
-                    const batchSize = 20
-                    let processed = 0
-                    let totalInserted = 0
-                    let totalSkipped = 0
-                    const total = previewItems.length
+                        setImportProgress(0)
+                        setImportStatusText('Iniciando importación...')
 
-                    for (let i = 0; i < previewItems.length; i += batchSize) {
-                      const batch = previewItems.slice(i, i + batchSize)
-                      setImportStatusText(`Importando ${Math.min(i + batchSize, total)} de ${total}...`)
-                      try {
-                        const res = await fetch('/api/user/sources/import-opml/batch', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ items: batch })
-                        })
-                        if (res.ok) {
-                          const data = await res.json().catch(() => ({ inserted: 0, skipped: 0 }))
-                          totalInserted += data.inserted || 0
-                          totalSkipped += data.skipped || 0
-                        } else {
-                          const err = await res.json().catch(() => ({ error: 'Batch failed' }))
-                          console.error('Batch import error', err)
+                        const total = previewItems.length
+                        let totalInserted = 0
+                        let totalSkipped = 0
+                        const importedUrls = new Set(sources.map((source) => source.url))
+
+                        for (let index = 0; index < previewItems.length; index += 1) {
+                          const item = previewItems[index]
+                          const xmlUrl = (item.url || '').trim()
+                          const title = (item.title || '').trim()
+                          const htmlUrl = (item.htmlUrl || '').trim()
+
+                          setImportStatusText(`Importando ${index + 1} de ${total}...`)
+
+                          if (!xmlUrl || importedUrls.has(xmlUrl)) {
+                            totalSkipped += 1
+                          } else {
+                            await addSource({
+                              id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${index}`,
+                              type: detectSourceType(xmlUrl, htmlUrl || undefined),
+                              name: title || xmlUrl,
+                              url: xmlUrl,
+                              enabled: true,
+                              refreshInterval: settings.defaultRefreshInterval,
+                              lastFetched: undefined,
+                            })
+                            importedUrls.add(xmlUrl)
+                            totalInserted += 1
+                          }
+
+                          setImportProgress(Math.round(((index + 1) / total) * 100))
                         }
-                      } catch (err) {
-                        console.error('Batch request failed', err)
-                      }
 
-                      processed += batch.length
-                      setImportProgress(Math.round((processed / total) * 100))
-                    }
-
-                    setImportStatusText(`Finalizado. Insertadas: ${totalInserted}. Omitidas: ${totalSkipped}`)
-                    toastState.toast({ title: 'Import OPML', description: `Insertadas: ${totalInserted}. Omitidas: ${totalSkipped}` })
-                    await loadSources()
-                    setTimeout(() => {
-                      setImportProgress(null)
-                      setImportStatusText(null)
-                      setPreviewOpen(false)
-                      setPreviewItems([])
-                    }, 2000)
+                        await loadSources()
+                        setImportStatusText(`Finalizado. Insertadas: ${totalInserted}. Omitidas: ${totalSkipped}`)
+                        toastState.toast({ title: 'Import OPML', description: `Insertadas: ${totalInserted}. Omitidas: ${totalSkipped}` })
+                        setTimeout(() => {
+                          setImportProgress(null)
+                          setImportStatusText(null)
+                          setPreviewOpen(false)
+                          setPreviewItems([])
+                        }, 1200)
                       }}>Importar</Button>
                     </>
                   )}
@@ -885,6 +911,46 @@ export function SettingsPanel() {
                       <span className="text-xs mt-1">{label}</span>
                     </Button>
                   ))}
+                </div>
+              </Field>
+
+              <Field>
+                <FieldLabel>Paleta de color</FieldLabel>
+                <div className="space-y-3">
+                  {PALETTE_OPTIONS.map((palette) => {
+                    const isSelected = settings.palette === palette.value
+
+                    return (
+                      <Button
+                        key={palette.value}
+                        variant="outline"
+                        className={`relative h-auto w-full items-stretch justify-between gap-4 overflow-hidden rounded-xl p-4 text-left transition-all ${isSelected ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/45 dark:bg-primary/15 dark:ring-primary/70' : ''}`}
+                        onClick={() => updateSettings({ palette: palette.value })}
+                      >
+                        {isSelected && (
+                          <span className="absolute left-0 top-0 h-full w-1 bg-primary" aria-hidden="true" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <Palette className="h-4 w-4 flex-shrink-0" />
+                            <span className="truncate">{palette.label}</span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{palette.description}</p>
+                        </div>
+                        <div className="flex flex-shrink-0 gap-2 overflow-hidden">
+                          <div className="flex gap-1.5 rounded-full border border-border/60 bg-background/60 p-1.5">
+                            {palette.swatches.map((color) => (
+                              <span
+                                key={color}
+                                className="h-4 w-4 rounded-full border border-border/70"
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </Button>
+                    )
+                  })}
                 </div>
               </Field>
               

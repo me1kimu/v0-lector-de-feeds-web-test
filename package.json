@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "bash ./scripts/ensure-tailwind-oxide.sh",
     "dev": "bash ./scripts/dev-with-ollama.sh",
+    "prebuild": "bash ./scripts/ensure-tailwind-oxide.sh",
     "dev:next": "next dev",
     "build": "next build",
+    "prestart": "bash ./scripts/ensure-tailwind-oxide.sh",
     "start": "next start",
     "lint": "eslint ."
   },

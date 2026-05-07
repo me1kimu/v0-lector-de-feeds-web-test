@@ -1,268 +1,63 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import type { User, Session } from '@supabase/supabase-js'
-import { 
-  isWebAuthnSupported, 
-  isPlatformAuthenticatorAvailable,
-  createPasskey,
-  authenticateWithPasskey,
-} from '@/lib/webauthn'
+import { useCallback, useEffect, useState } from 'react'
 
-interface AuthState {
-  user: User | null
-  session: Session | null
+interface LocalAuthState {
+  user: null
+  session: null
   isLoading: boolean
   error: string | null
-  passkeySupported: boolean
-  platformAuthAvailable: boolean
+  passkeySupported: false
+  platformAuthAvailable: false
+}
+
+const LOCAL_AUTH_STATE: LocalAuthState = {
+  user: null,
+  session: null,
+  isLoading: false,
+  error: null,
+  passkeySupported: false,
+  platformAuthAvailable: false,
 }
 
 export function useAuth() {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    session: null,
-    isLoading: true,
-    error: null,
-    passkeySupported: false,
-    platformAuthAvailable: false,
-  })
+  const [state, setState] = useState<LocalAuthState>(LOCAL_AUTH_STATE)
 
-  const supabase = createClient()
-
-  // Check WebAuthn support on mount
   useEffect(() => {
-    const checkSupport = async () => {
-      const passkeySupported = isWebAuthnSupported()
-      const platformAuthAvailable = await isPlatformAuthenticatorAvailable()
-      setState(prev => ({
-        ...prev,
-        passkeySupported,
-        platformAuthAvailable,
-      }))
-    }
-    checkSupport()
+    setState(LOCAL_AUTH_STATE)
   }, [])
 
-  // Initialize auth state
-  useEffect(() => {
-    const getInitialSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) throw error
-        
-        setState(prev => ({
-          ...prev,
-          session,
-          user: session?.user ?? null,
-          isLoading: false,
-        }))
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : 'Failed to get session'
-logger.error('Auth', 'Error getting initial session', error)
-        setState(prev => ({
-          ...prev,
-          error: msg,
-          isLoading: false,
-        }))
-      }
-    }
+  const registerWithPasskey = useCallback(async (_email: string, _displayName?: string) => {
+    throw new Error('La aplicación ahora funciona en modo local y no usa cuentas online.')
+  }, [])
 
-    getInitialSession()
+  const signInWithPasskey = useCallback(async (_email?: string) => {
+    throw new Error('La aplicación ahora funciona en modo local y no usa cuentas online.')
+  }, [])
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setState(prev => ({
-          ...prev,
-          session,
-          user: session?.user ?? null,
-          isLoading: false,
-        }))
-      }
-    )
+  const signUpWithEmail = useCallback(async (_email: string, _password: string, _displayName?: string) => {
+    throw new Error('La aplicación ahora funciona en modo local y no usa cuentas online.')
+  }, [])
 
-    return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  const signInWithEmail = useCallback(async (_email: string, _password: string) => {
+    throw new Error('La aplicación ahora funciona en modo local y no usa cuentas online.')
+  }, [])
 
-  // Register with passkey
-  const registerWithPasskey = useCallback(async (email: string, displayName?: string) => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
-
-    try {
-      // Get registration options from server
-      const optionsRes = await fetch('/api/auth/passkey/register/options', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, displayName }),
-      })
-
-      if (!optionsRes.ok) {
-        const error = await optionsRes.json()
-        throw new Error(error.error || 'Failed to get registration options')
-      }
-
-      const options = await optionsRes.json()
-
-      // Create passkey credential
-      const credential = await createPasskey(options)
-
-      // Verify with server
-      const verifyRes = await fetch('/api/auth/passkey/register/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          credential,
-          email,
-          displayName,
-          challenge: options.challenge,
-        }),
-      })
-
-      if (!verifyRes.ok) {
-        const error = await verifyRes.json()
-        throw new Error(error.error || 'Failed to verify registration')
-      }
-
-      const result = await verifyRes.json()
-
-      // Refresh session
-      await supabase.auth.refreshSession()
-
-      setState(prev => ({ ...prev, isLoading: false }))
-
-      return result
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Registration failed'
-      setState(prev => ({ ...prev, error: message, isLoading: false }))
-      throw error
-    }
-  }, [supabase.auth])
-
-  // Sign in with passkey
-  const signInWithPasskey = useCallback(async (email?: string) => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
-
-    try {
-      // Get authentication options from server
-      const optionsRes = await fetch('/api/auth/passkey/authenticate/options', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-
-      if (!optionsRes.ok) {
-        const error = await optionsRes.json()
-        throw new Error(error.error || 'Failed to get authentication options')
-      }
-
-      const options = await optionsRes.json()
-
-      // Authenticate with passkey
-      const credential = await authenticateWithPasskey(options)
-
-      // Verify with server
-      const verifyRes = await fetch('/api/auth/passkey/authenticate/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          credential,
-          challenge: options.challenge,
-        }),
-      })
-
-      if (!verifyRes.ok) {
-        const error = await verifyRes.json()
-        throw new Error(error.error || 'Failed to verify authentication')
-      }
-
-      const result = await verifyRes.json()
-
-      // Refresh session
-      await supabase.auth.refreshSession()
-
-      setState(prev => ({ ...prev, isLoading: false }))
-
-      return result
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Sign in failed'
-      setState(prev => ({ ...prev, error: message, isLoading: false }))
-      throw error
-    }
-  }, [supabase.auth])
-
-  // Sign up with email/password
-  const signUpWithEmail = useCallback(async (email: string, password: string, displayName?: string) => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-            `${window.location.origin}/auth/callback`,
-          data: { display_name: displayName || email.split('@')[0] },
-        },
-      })
-      if (error) throw error
-      setState(prev => ({ ...prev, isLoading: false }))
-      return { requiresEmailVerification: !data.session }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Registration failed'
-      setState(prev => ({ ...prev, error: message, isLoading: false }))
-      throw error
-    }
-  }, [supabase.auth])
-
-  // Sign in with email/password
-  const signInWithEmail = useCallback(async (email: string, password: string) => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-      setState(prev => ({ ...prev, isLoading: false }))
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Sign in failed'
-      setState(prev => ({ ...prev, error: message, isLoading: false }))
-      throw error
-    }
-  }, [supabase.auth])
-
-  // Sign out
   const signOut = useCallback(async () => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
+    setState(LOCAL_AUTH_STATE)
+  }, [])
 
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-
-      setState(prev => ({
-        ...prev,
-        user: null,
-        session: null,
-        isLoading: false,
-      }))
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Sign out failed'
-      setState(prev => ({ ...prev, error: message, isLoading: false }))
-      throw error
-    }
-  }, [supabase.auth])
-
-  // Clear error
   const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }))
+    setState(LOCAL_AUTH_STATE)
   }, [])
 
   return {
     ...state,
-    registerWithPasskey,
-    signInWithPasskey,
     signUpWithEmail,
     signInWithEmail,
     signOut,
+    registerWithPasskey,
+    signInWithPasskey,
     clearError,
   }
 }

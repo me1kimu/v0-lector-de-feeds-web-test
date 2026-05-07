@@ -3,42 +3,28 @@
 import { useEffect, useState } from 'react'
 import { useFeedStore } from '@/lib/store'
 import { useServiceWorker } from '@/hooks/use-service-worker'
-import { useAuth } from '@/hooks/use-auth'
 import { Sidebar } from './sidebar'
 import { Header } from './header'
 import { FeedList } from './feed-list'
 import { SettingsPanel } from './settings-panel'
 import { NotificationsPanel } from './notifications-panel'
 import { FeedChatbot } from './feed-chatbot'
-import { LandingPage } from './landing-page'
 import { cn } from '@/lib/utils'
 import { Spinner } from '@/components/ui/spinner'
+import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { WifiOff } from 'lucide-react'
 
 export function FeedApp() {
-  const { initialize, isLoading, refreshAllSources, setUser, settingsOpen, notificationsOpen, setSettingsOpen, setNotificationsOpen, isAuthenticated } = useFeedStore()
+  const { initialize, isLoading, refreshAllSources, notificationsOpen, setNotificationsOpen, refreshProgress } = useFeedStore()
   const { isOnline, isRegistered } = useServiceWorker()
-  const { user, loading: authLoading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   
-  // Sync auth state with store
-  useEffect(() => {
-    if (user) {
-      setUser({
-        id: user.id,
-        email: user.email || '',
-        displayName: user.user_metadata?.display_name,
-      })
-    } else {
-      setUser(null)
-    }
-  }, [user, setUser])
-  
   useEffect(() => {
     setMounted(true)
+    void initialize()
     
     // Listen for background sync events from service worker
     const handleSyncFeeds = () => {
@@ -50,20 +36,15 @@ export function FeedApp() {
     return () => {
       window.removeEventListener('sync-feeds', handleSyncFeeds)
     }
-  }, [refreshAllSources])
+  }, [initialize, refreshAllSources])
 
-  // Show spinner while checking auth or mounting
-  if (!mounted || authLoading) {
+  // Show spinner while mounting and hydrating local state
+  if (!mounted) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <Spinner className="h-8 w-8 text-primary" />
       </div>
     )
-  }
-
-  // Show landing page if not authenticated
-  if (!isAuthenticated) {
-    return <LandingPage />
   }
   
   return (
@@ -96,7 +77,19 @@ export function FeedApp() {
           onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
         />
         
-        {isLoading ? (
+        {isLoading && refreshProgress ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
+            <div className="w-full max-w-md">
+              <div className="mb-2 text-sm text-muted-foreground text-center">
+                Actualizando fuentes ({refreshProgress.completed}/{refreshProgress.total})
+              </div>
+              <Progress 
+                value={(refreshProgress.completed / refreshProgress.total) * 100} 
+                className="h-2"
+              />
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <Spinner className="h-8 w-8 text-primary" />
           </div>

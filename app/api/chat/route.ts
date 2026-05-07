@@ -44,6 +44,91 @@ const createOllamaClient = () => {
   })
 }
 
+type OllamaModelInfo = {
+  name: string
+  details?: {
+    parameter_size?: string
+  }
+  size?: number
+}
+
+type RankedOllamaModel = {
+  id: string
+  parameterCount: number
+}
+
+const OLLAMA_MODEL_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+let cachedOllamaModels: { models: RankedOllamaModel[]; createdAt: number } | null = null
+
+function getOllamaApiBaseUrl() {
+  const endpoint = process.env.OLLAMA_ENDPOINT || 'http://localhost:11434/v1'
+  return endpoint.replace(/\/v1\/?$/, '')
+}
+
+function parseParameterSize(parameterSize?: string): number {
+  if (!parameterSize) {
+    return 0
+  }
+
+  const match = parameterSize.trim().match(/^([\d.]+)\s*([kKmMgGtT]?)(?:[bB])?$/)
+  if (!match) {
+    return 0
+  }
+
+  const value = Number.parseFloat(match[1])
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+
+  const unit = match[2]?.toLowerCase()
+  const multiplierMap: Record<string, number> = {
+    '': 1,
+    k: 1_000,
+    m: 1_000_000,
+    g: 1_000_000_000,
+    t: 1_000_000_000_000,
+  }
+
+  return value * (multiplierMap[unit ?? ''] ?? 1)
+}
+
+async function fetchOllamaModels(): Promise<RankedOllamaModel[]> {
+  if (cachedOllamaModels && Date.now() - cachedOllamaModels.createdAt < OLLAMA_MODEL_CACHE_TTL) {
+    return cachedOllamaModels.models
+  }
+
+  try {
+    const response = await fetch(new URL('/api/tags', getOllamaApiBaseUrl()), {
+      signal: AbortSignal.timeout(4000),
+    })
+
+    if (!response.ok) {
+      return []
+    }
+
+    const payload = await response.json() as { models?: OllamaModelInfo[] }
+    const models = Array.isArray(payload.models)
+      ? payload.models
+          .map((model) => ({
+            id: model.name,
+            parameterCount: parseParameterSize(model.details?.parameter_size),
+          }))
+          .filter((model) => Boolean(model.id))
+          .sort((left, right) => right.parameterCount - left.parameterCount || left.id.localeCompare(right.id))
+      : []
+
+    cachedOllamaModels = {
+      models,
+      createdAt: Date.now(),
+    }
+
+    return models
+  } catch (error) {
+    console.warn('[v0] Unable to list Ollama models:', error instanceof Error ? error.message : error)
+    return []
+  }
+}
+
 // Cache successful model for the lifetime of this server instance
 // to avoid re-probing on every request
 let cachedWorkingModel: { id: string; createdAt: number } | null = null
@@ -82,22 +167,26 @@ async function selectWorkingModel(preferOllama: boolean): Promise<{ model: Langu
       const modelId = cachedId.replace('openrouter:', '')
       return { model: createOpenRouterClient()(modelId), id: cachedId }
     }
-    if (cachedId === 'ollama:qwen:0.5b') {
-      return { model: createOllamaClient()('qwen:0.5b'), id: cachedId }
+    if (cachedId.startsWith('ollama:')) {
+      const modelId = cachedId.replace('ollama:', '')
+      return { model: createOllamaClient()(modelId), id: cachedId }
     }
     if (cachedId === 'gemini:flash') {
       return { model: google('gemini-2.0-flash'), id: cachedId }
     }
   }
 
-  // Build attempt list based on priority: Ollama -> OpenRouter -> Gemini
+  // Build attempt list based on priority: strongest Ollama models -> OpenRouter -> Gemini
   const attempts: Array<{ id: string; build: () => LanguageModel }> = []
-  
-  // 1. Local Models (Ollama)
-  attempts.push({
-    id: 'ollama:qwen:0.5b',
-    build: () => createOllamaClient()('qwen:0.5b'),
-  })
+
+  // 1. Local Models (Ollama), ordered by parameter count
+  const ollamaModels = await fetchOllamaModels()
+  for (const modelInfo of ollamaModels) {
+    attempts.push({
+      id: `ollama:${modelInfo.id}`,
+      build: () => createOllamaClient()(modelInfo.id),
+    })
+  }
   
   // 2. OpenRouter models (First fallback cascade)
   if (process.env.OPENROUTER_API_KEY) {
@@ -166,7 +255,7 @@ Contenido: ${item.content.substring(0, 500)}${item.content.length > 500 ? '...' 
   }
 
   // Automatically select first working model from the fallback chain
-  // Order: [Ollama if preferred] -> OpenRouter (4 models) -> Ollama -> Gemini
+  // Order: strongest local Ollama models -> OpenRouter -> Gemini
   const selection = await selectWorkingModel(useOllama === true)
   
   if (!selection) {

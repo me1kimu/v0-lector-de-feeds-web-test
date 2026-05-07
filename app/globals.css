@@ -39,6 +39,111 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+:root[data-palette='ocaso'] {
+  --background: #fff8ef;
+  --foreground: #2b1812;
+  --card: #fffdf9;
+  --card-foreground: #2b1812;
+  --popover: #fffdf9;
+  --popover-foreground: #2b1812;
+  --primary: #b82f0f;
+  --primary-foreground: #fff8ef;
+  --secondary: #f6d488;
+  --secondary-foreground: #3f2618;
+  --muted: #f4e9dd;
+  --muted-foreground: #6f5f54;
+  --accent: #7ac9d8;
+  --accent-foreground: #16323a;
+  --destructive: #c63a29;
+  --destructive-foreground: #fff7f6;
+  --border: #ead9c7;
+  --input: #ead9c7;
+  --ring: #b82f0f;
+  --chart-1: #b82f0f;
+  --chart-2: #ffd86b;
+  --chart-3: #7ac9d8;
+  --chart-4: #3e868c;
+  --chart-5: #2f7059;
+  --sidebar: #fff9f2;
+  --sidebar-foreground: #2b1812;
+  --sidebar-primary: #b82f0f;
+  --sidebar-primary-foreground: #fff8ef;
+  --sidebar-accent: #f4e9dd;
+  --sidebar-accent-foreground: #2b1812;
+  --sidebar-border: #ead9c7;
+  --sidebar-ring: #b82f0f;
+}
+
+:root[data-palette='brisa'] {
+  --background: #fff8f4;
+  --foreground: #34261f;
+  --card: #fffdfb;
+  --card-foreground: #34261f;
+  --popover: #fffdfb;
+  --popover-foreground: #34261f;
+  --primary: #ef8c4d;
+  --primary-foreground: #fff9f5;
+  --secondary: #8fd0c2;
+  --secondary-foreground: #173630;
+  --muted: #f4ebe5;
+  --muted-foreground: #76645b;
+  --accent: #f0b7eb;
+  --accent-foreground: #3b2340;
+  --destructive: #c45b4d;
+  --destructive-foreground: #fff7f5;
+  --border: #eadfd7;
+  --input: #eadfd7;
+  --ring: #ef8c4d;
+  --chart-1: #8fd0c2;
+  --chart-2: #ef8c4d;
+  --chart-3: #9dd8cf;
+  --chart-4: #f0b7eb;
+  --chart-5: #3d2d27;
+  --sidebar: #fffaf7;
+  --sidebar-foreground: #34261f;
+  --sidebar-primary: #ef8c4d;
+  --sidebar-primary-foreground: #fff9f5;
+  --sidebar-accent: #f4ebe5;
+  --sidebar-accent-foreground: #34261f;
+  --sidebar-border: #eadfd7;
+  --sidebar-ring: #ef8c4d;
+}
+
+:root[data-palette='neon'] {
+  --background: #fff8ff;
+  --foreground: #35273b;
+  --card: #fffdfd;
+  --card-foreground: #35273b;
+  --popover: #fffdfd;
+  --popover-foreground: #35273b;
+  --primary: #f49ce2;
+  --primary-foreground: #3b2438;
+  --secondary: #54d08a;
+  --secondary-foreground: #10301f;
+  --muted: #f2eaf6;
+  --muted-foreground: #73647b;
+  --accent: #ff40ba;
+  --accent-foreground: #fff6fd;
+  --destructive: #d05c7c;
+  --destructive-foreground: #fff7fa;
+  --border: #eadfee;
+  --input: #eadfee;
+  --ring: #ff40ba;
+  --chart-1: #f49ce2;
+  --chart-2: #faf4ff;
+  --chart-3: #54d08a;
+  --chart-4: #3f725e;
+  --chart-5: #ff40ba;
+  --sidebar: #fffafe;
+  --sidebar-foreground: #35273b;
+  --sidebar-primary: #f49ce2;
+  --sidebar-primary-foreground: #3b2438;
+  --sidebar-accent: #f2eaf6;
+  --sidebar-accent-foreground: #35273b;
+  --sidebar-border: #eadfee;
+  --sidebar-ring: #ff40ba;
+}
+
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -72,6 +177,111 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+}
+
+.dark[data-palette='ocaso'] {
+  --background: #16100d;
+  --foreground: #fff2e6;
+  --card: #1d1511;
+  --card-foreground: #fff2e6;
+  --popover: #1d1511;
+  --popover-foreground: #fff2e6;
+  --primary: #ff7c54;
+  --primary-foreground: #2b1812;
+  --secondary: #4f392a;
+  --secondary-foreground: #fff2e6;
+  --muted: #2a201c;
+  --muted-foreground: #b8a795;
+  --accent: #3e868c;
+  --accent-foreground: #effafb;
+  --destructive: #ff7c6f;
+  --destructive-foreground: #2d1714;
+  --border: #382b24;
+  --input: #382b24;
+  --ring: #ff7c54;
+  --chart-1: #ff7c54;
+  --chart-2: #ffd86b;
+  --chart-3: #7ac9d8;
+  --chart-4: #3e868c;
+  --chart-5: #2f7059;
+  --sidebar: #1a1310;
+  --sidebar-foreground: #fff2e6;
+  --sidebar-primary: #ff7c54;
+  --sidebar-primary-foreground: #2b1812;
+  --sidebar-accent: #2a201c;
+  --sidebar-accent-foreground: #fff2e6;
+  --sidebar-border: #382b24;
+  --sidebar-ring: #ff7c54;
+}
+
+.dark[data-palette='brisa'] {
+  --background: #17110f;
+  --foreground: #fff7f0;
+  --card: #201815;
+  --card-foreground: #fff7f0;
+  --popover: #201815;
+  --popover-foreground: #fff7f0;
+  --primary: #ff9a59;
+  --primary-foreground: #2c1b13;
+  --secondary: #7ac9b9;
+  --secondary-foreground: #14302b;
+  --muted: #2d2420;
+  --muted-foreground: #b7a598;
+  --accent: #f0b7eb;
+  --accent-foreground: #3b2340;
+  --destructive: #d26d61;
+  --destructive-foreground: #fff7f5;
+  --border: #392e29;
+  --input: #392e29;
+  --ring: #ff9a59;
+  --chart-1: #8fd0c2;
+  --chart-2: #ff9a59;
+  --chart-3: #9dd8cf;
+  --chart-4: #f0b7eb;
+  --chart-5: #f5d4c0;
+  --sidebar: #181210;
+  --sidebar-foreground: #fff7f0;
+  --sidebar-primary: #ff9a59;
+  --sidebar-primary-foreground: #2c1b13;
+  --sidebar-accent: #2d2420;
+  --sidebar-accent-foreground: #fff7f0;
+  --sidebar-border: #392e29;
+  --sidebar-ring: #ff9a59;
+}
+
+.dark[data-palette='neon'] {
+  --background: #140f17;
+  --foreground: #fff4ff;
+  --card: #1d1621;
+  --card-foreground: #fff4ff;
+  --popover: #1d1621;
+  --popover-foreground: #fff4ff;
+  --primary: #ff8fe0;
+  --primary-foreground: #281723;
+  --secondary: #54d08a;
+  --secondary-foreground: #12301f;
+  --muted: #261d2a;
+  --muted-foreground: #b8a7c4;
+  --accent: #ff40ba;
+  --accent-foreground: #fff7fd;
+  --destructive: #df6b8f;
+  --destructive-foreground: #fff7fa;
+  --border: #3a2c40;
+  --input: #3a2c40;
+  --ring: #ff40ba;
+  --chart-1: #ff8fe0;
+  --chart-2: #faf4ff;
+  --chart-3: #54d08a;
+  --chart-4: #3f725e;
+  --chart-5: #ff40ba;
+  --sidebar: #18121c;
+  --sidebar-foreground: #fff4ff;
+  --sidebar-primary: #ff8fe0;
+  --sidebar-primary-foreground: #281723;
+  --sidebar-accent: #261d2a;
+  --sidebar-accent-foreground: #fff4ff;
+  --sidebar-border: #3a2c40;
+  --sidebar-ring: #ff40ba;
 }
 
 @theme inline {
@@ -121,5 +331,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top right, color-mix(in oklab, var(--primary) 14%, transparent), transparent 32%),
+      radial-gradient(circle at bottom left, color-mix(in oklab, var(--accent) 12%, transparent), transparent 28%),
+      radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--secondary) 10%, transparent), transparent 24%);
+    background-attachment: fixed;
   }
 }

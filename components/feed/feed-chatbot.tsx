@@ -3,7 +3,6 @@
 // AI Chat component for feed summarization
 import { useState, useRef, useEffect } from 'react'
 import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
 import { useFeedStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -80,7 +79,7 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
       })
     }))
   
-  const { messages, append, status, setMessages } = useChat({
+  const { messages, sendMessage, status, setMessages } = useChat({
     api: '/api/chat',
     body: {
       feedItems: latestItems
@@ -99,13 +98,13 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
-    append({ role: 'user', content: input })
+    void sendMessage({ text: input })
     setInput('')
   }
   
   const handleSummarize = () => {
     if (isLoading) return
-    append({ role: 'user', content: 'Resume las ultimas publicaciones de mi feed. Destaca los temas principales y cualquier noticia importante.' })
+    void sendMessage({ text: 'Resume las ultimas publicaciones de mi feed. Destaca los temas principales y cualquier noticia importante.' })
   }
 
   const handleClearChat = () => {
@@ -165,7 +164,7 @@ export function FeedChatbot({ open, onOpenChange }: FeedChatbotProps) {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               El asistente probará automáticamente modelos en este orden: <br/>
-              <b>1.</b> Qwen Local (Ollama) &rarr; <b>2.</b> OpenRouter &rarr; <b>3.</b> Gemini Cloud
+              <b>1.</b> Modelos locales de Ollama, del más potente al menos potente &rarr; <b>2.</b> OpenRouter &rarr; <b>3.</b> Gemini Cloud
             </p>
           </div>
         </SheetHeader>

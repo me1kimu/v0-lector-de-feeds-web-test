@@ -67,6 +67,7 @@ export interface MediaAttachment {
 
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system'
+  palette: 'ocaso' | 'brisa' | 'neon'
   showExternalMedia: boolean
   compactMode: boolean
   notificationsEnabled: boolean

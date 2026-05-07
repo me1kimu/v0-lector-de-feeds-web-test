@@ -16,8 +16,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'FeedReader - Lector de Feeds Unificado',
-  description: 'Lector de feeds RSS, Mastodon y Bluesky con soporte PWA',
+  title: 'FeedReader - Lector de Feeds Local',
+  description: 'Lector de feeds local-first con almacenamiento en el dispositivo y paletas de color personalizables',
   generator: 'v0.app',
   manifest: '/manifest.json',
   appleWebApp: {
@@ -50,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className="bg-background" suppressHydrationWarning>
+    <html lang="es" className="bg-background" data-palette="ocaso" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <LoggerProvider />
         {children}

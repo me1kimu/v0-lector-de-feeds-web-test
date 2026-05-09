@@ -76,7 +76,7 @@ export function LandingPage() {
               <FeatureCard 
                 icon={<Shield className="h-10 w-10 text-primary" />}
                 title="Seguridad de vanguardia"
-                description="Protege tu cuenta con Passkeys para un acceso sin contraseñas, rápido y ultra seguro."
+                description="Protege tu cuenta con autenticación segura para un acceso confiable en todo momento."
               />
               <FeatureCard 
                 icon={<Rss className="h-10 w-10 text-primary" />}

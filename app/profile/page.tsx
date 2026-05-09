@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, LogOut } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
-import { PasskeyManager } from '@/components/profile/passkey-manager'
 
 interface UserProfile {
   userId: string
@@ -139,8 +138,6 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Passkey Manager */}
-        <PasskeyManager />
 
         {/* Sign Out */}
         <Card className="border-destructive/50 bg-destructive/5">

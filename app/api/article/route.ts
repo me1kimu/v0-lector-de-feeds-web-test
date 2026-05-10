@@ -142,9 +142,9 @@ function extractArticleContent(html: string): string {
   
   // Remove script and style tags
   let cleaned = html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, '')
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, '')
     .replace(/<!--[\s\S]*?-->/g, '')
   
   // Try to extract from common article containers

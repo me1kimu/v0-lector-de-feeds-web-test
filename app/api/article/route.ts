@@ -302,7 +302,7 @@ function extractArticleContent(html: string): string {
   if (paragraphs && paragraphs.length > 0) {
     // Filter out short paragraphs (likely navigation/footer)
     const goodParagraphs = paragraphs
-      .map(p => escapeHtml(p.replace(/<[^>]+>/g, '').trim()))
+      .map(p => escapeHtml(extractTextContent(p).trim()))
       .filter(p => p.length > 50)
     
     if (goodParagraphs.length >= 2) {
@@ -311,6 +311,11 @@ function extractArticleContent(html: string): string {
   }
   
   return ''
+}
+
+function extractTextContent(fragment: string): string {
+  const doc = new DOMParser().parseFromString(fragment, 'text/html')
+  return doc.body.textContent || ''
 }
 
 function escapeHtml(text: string): string {

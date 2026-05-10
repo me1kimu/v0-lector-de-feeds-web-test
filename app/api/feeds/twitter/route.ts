@@ -33,7 +33,17 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const username = handle.replace('@', '')
+    const normalizedHandle = handle.trim().replace(/^@/, '')
+    const TWITTER_HANDLE_REGEX = /^[A-Za-z0-9_]{1,15}$/
+
+    if (!TWITTER_HANDLE_REGEX.test(normalizedHandle)) {
+      return NextResponse.json(
+        { error: 'Invalid Twitter username format' },
+        { status: 400 }
+      )
+    }
+
+    const username = normalizedHandle
     
     // Try different Nitter instances until one works
     let xmlText: string | null = null

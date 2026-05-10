@@ -94,12 +94,24 @@ function detectSourceType(url: string, htmlUrl?: string): SourceType {
   return 'rss'
 }
 
+function sanitizeOpmlXml(input: string): string {
+  // Block XML features that are unnecessary for OPML import and may be abused.
+  // We keep content as plain OPML XML (outlines/attributes) and reject DTD/PI usage.
+  if (/<!DOCTYPE/i.test(input)) {
+    throw new Error('El archivo OPML contiene una declaración no permitida')
+  }
+
+  // Remove processing instructions (except optional XML declaration) to reduce attack surface.
+  return input.replace(/<\?(?!xml[\s>])[\s\S]*?\?>/gi, '')
+}
+
 function parseAndValidateOpmlXml(input: string): Document {
   const normalized = input.trim()
   if (!normalized) throw new Error('Archivo OPML vacío')
 
+  const safeXml = sanitizeOpmlXml(normalized)
   const parser = new DOMParser()
-  const doc = parser.parseFromString(normalized, 'application/xml')
+  const doc = parser.parseFromString(safeXml, 'application/xml')
 
   if (doc.querySelector('parsererror')) {
     throw new Error('El archivo no parece ser OPML válido')

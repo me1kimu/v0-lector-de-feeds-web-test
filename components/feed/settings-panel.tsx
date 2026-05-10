@@ -119,25 +119,52 @@ function sanitizeOpmlXml(input: string): string {
   return withoutPi
 }
 
-function parseAndValidateOpmlXml(input: string): Document {
+function decodeXmlEntities(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
+function parseAndValidateOpmlXml(input: string): Array<{ title?: string; url?: string; htmlUrl?: string }> {
   const normalized = input.trim()
   if (!normalized) throw new Error('Archivo OPML vacío')
 
   const safeXml = sanitizeOpmlXml(normalized)
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(safeXml, 'application/xml')
-
-  if (doc.querySelector('parsererror')) {
+  if (!/<opml\b/i.test(safeXml) || !/<outline\b/i.test(safeXml)) {
     throw new Error('El archivo no parece ser OPML válido')
   }
 
-  const opml = doc.querySelector('opml')
-  const outlines = doc.querySelectorAll('outline')
-  if (!opml || outlines.length === 0) {
+  const outlines: Array<{ title?: string; url?: string; htmlUrl?: string }> = []
+  const outlineTagRegex = /<outline\b([^>]*)\/?>/gi
+  let match: RegExpExecArray | null
+
+  while ((match = outlineTagRegex.exec(safeXml)) !== null) {
+    const attrs = match[1] || ''
+    const attrMap: Record<string, string> = {}
+    const attrRegex = /([a-zA-Z_:][\w:.-]*)\s*=\s*("([^"]*)"|'([^']*)')/g
+    let attrMatch: RegExpExecArray | null
+
+    while ((attrMatch = attrRegex.exec(attrs)) !== null) {
+      const key = attrMatch[1].toLowerCase()
+      const rawValue = attrMatch[3] ?? attrMatch[4] ?? ''
+      attrMap[key] = decodeXmlEntities(rawValue)
+    }
+
+    const xmlUrl = attrMap['xmlurl'] || attrMap['url']
+    const title = attrMap['title'] || attrMap['text']
+    const htmlUrl = attrMap['htmlurl']
+
+    if (xmlUrl) outlines.push({ title: title || undefined, url: xmlUrl, htmlUrl })
+  }
+
+  if (outlines.length === 0) {
     throw new Error('El archivo no parece ser OPML válido')
   }
 
-  return doc
+  return outlines
 }
 
 
@@ -724,21 +751,7 @@ export function SettingsPanel() {
                       const text = await f.text()
                       setImportStatusText('Analizando OPML...')
 
-                      const doc = parseAndValidateOpmlXml(text)
-                      const outlines: Array<{ title?: string; url?: string; htmlUrl?: string }> = []
-
-                      function walk(node: Element) {
-                        if (node.tagName && node.tagName.toLowerCase() === 'outline') {
-                          const xmlUrl =
-                            node.getAttribute('xmlUrl') || node.getAttribute('xmlurl') || node.getAttribute('url') || undefined
-                          const title = node.getAttribute('title') || node.getAttribute('text') || undefined
-                          const htmlUrl = node.getAttribute('htmlUrl') || node.getAttribute('htmlurl') || undefined
-                          if (xmlUrl) outlines.push({ title: title || undefined, url: xmlUrl, htmlUrl })
-                        }
-                        node.childNodes.forEach((child) => {
-                          if ((child as Element).tagName) walk(child as Element)
-                        })
-                      }
+                      const outlines = parseAndValidateOpmlXml(text)
 
                       const body = doc.querySelector('body') || doc
                       if (body) walk(body as Element)

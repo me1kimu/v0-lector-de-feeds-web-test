@@ -94,24 +94,24 @@ function detectSourceType(url: string, htmlUrl?: string): SourceType {
   return 'rss'
 }
 
-function sanitizeOpmlXml(input: string): string {
+function parseAndValidateOpmlXml(input: string): Document {
   const normalized = input.trim()
   if (!normalized) throw new Error('Archivo OPML vacío')
 
-  const withoutDoctype = normalized
-    .replace(/<\?xml[\s\S]*?\?>/gi, '')
-    .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
-    .replace(/<\?[\s\S]*?\?>/gi, '')
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(normalized, 'application/xml')
 
-  if (!/<opml[\s>]/i.test(withoutDoctype) || !/<outline[\s>]/i.test(withoutDoctype)) {
+  if (doc.querySelector('parsererror')) {
     throw new Error('El archivo no parece ser OPML válido')
   }
 
-  if (/<\s*(script|iframe|object|embed|svg|math|link|meta|style)\b/i.test(withoutDoctype)) {
-    throw new Error('El archivo OPML contiene etiquetas no permitidas')
+  const opml = doc.querySelector('opml')
+  const outlines = doc.querySelectorAll('outline')
+  if (!opml || outlines.length === 0) {
+    throw new Error('El archivo no parece ser OPML válido')
   }
 
-  return withoutDoctype
+  return doc
 }
 
 
@@ -698,11 +698,7 @@ export function SettingsPanel() {
                       const text = await f.text()
                       setImportStatusText('Analizando OPML...')
 
-                      const safeXml = sanitizeOpmlXml(text)
-
-                      // Parse OPML in client using DOMParser to extract outlines
-                      const parser = new DOMParser()
-                      const doc = parser.parseFromString(safeXml, 'application/xml')
+                      const doc = parseAndValidateOpmlXml(text)
                       const outlines: Array<{ title?: string; url?: string; htmlUrl?: string }> = []
 
                       function walk(node: Element) {

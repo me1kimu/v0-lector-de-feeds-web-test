@@ -13,7 +13,16 @@ function isAllowedMediaUrl(rawUrl: string): URL | null {
       return null
     }
 
-    const isAllowedHost = ALLOWED_HOST_PATTERNS.some((pattern) => pattern.test(parsed.hostname))
+    if (parsed.username || parsed.password) {
+      return null
+    }
+
+    if (parsed.port && parsed.port !== '443') {
+      return null
+    }
+
+    const hostname = parsed.hostname.toLowerCase()
+    const isAllowedHost = ALLOWED_HOST_PATTERNS.some((pattern) => pattern.test(hostname))
     if (!isAllowedHost) {
       return null
     }
@@ -49,7 +58,7 @@ export async function GET(request: NextRequest) {
 
   const upstreamResponse = await fetch(parsedUrl.toString(), {
     headers: upstreamHeaders,
-    redirect: 'follow',
+    redirect: 'manual',
   })
 
   if (!upstreamResponse.ok && upstreamResponse.status !== 206) {

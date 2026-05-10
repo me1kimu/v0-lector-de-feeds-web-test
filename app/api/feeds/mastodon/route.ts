@@ -34,6 +34,58 @@ interface MastodonStatus {
   sensitive?: boolean
 }
 
+function isPrivateOrLocalHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase()
+
+  if (host === 'localhost' || host === '::1') return true
+
+  // IPv4 checks
+  const ipv4Match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (ipv4Match) {
+    const octets = ipv4Match.slice(1).map(Number)
+    if (octets.some((o) => o < 0 || o > 255)) return true
+    const [a, b] = octets
+    if (a === 10) return true
+    if (a === 127) return true
+    if (a === 169 && b === 254) return true
+    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 192 && b === 168) return true
+    if (a === 0) return true
+  }
+
+  // IPv6 checks (basic)
+  if (host.includes(':')) {
+    if (host === '::1') return true
+    if (host.startsWith('fc') || host.startsWith('fd')) return true // unique local
+    if (host.startsWith('fe80:')) return true // link-local
+  }
+
+  return false
+}
+
+function normalizeAndValidateInstanceUrl(rawInstance: string): string | null {
+  let value = (rawInstance || '').trim().replace(/\/+$/, '')
+  if (!value) return null
+
+  if (!value.startsWith('http://') && !value.startsWith('https://')) {
+    value = `https://${value}`
+  }
+
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    return null
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
+  if (!parsed.hostname) return null
+  if (parsed.username || parsed.password) return null
+  if (isPrivateOrLocalHostname(parsed.hostname)) return null
+
+  return parsed.origin
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { source, action, statusId } = await request.json() as {
@@ -42,22 +94,14 @@ export async function POST(request: NextRequest) {
       statusId?: string
     }
     
-    // Get instance URL and ensure it has https://
-    let instance = source.credentials?.instance || source.url || ''
-    instance = instance.trim()
-    
-    // Remove trailing slashes
-    instance = instance.replace(/\/+$/, '')
-    
-    // Add https:// if not present
-    if (instance && !instance.startsWith('http://') && !instance.startsWith('https://')) {
-      instance = `https://${instance}`
-    }
+    // Get and validate instance URL (SSRF protection)
+    const rawInstance = source.credentials?.instance || source.url || ''
+    const instance = normalizeAndValidateInstanceUrl(rawInstance)
     
     const accessToken = source.credentials?.accessToken
     
     if (!instance) {
-      return NextResponse.json({ error: 'Instance URL is required' }, { status: 400 })
+      return NextResponse.json({ error: 'A valid public instance URL is required' }, { status: 400 })
     }
     
     const headers: HeadersInit = {

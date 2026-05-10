@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const ALLOWED_HOST_PATTERNS = [
-  /(^|\.)cdninstagram\.com$/i,
-  /(^|\.)fbcdn\.net$/i,
-]
+const ALLOWED_MEDIA_HOSTS = new Set([
+  'cdninstagram.com',
+  'fbcdn.net',
+])
+
+const CANONICAL_HOST_BY_HOST: Record<string, string> = {
+  'cdninstagram.com': 'cdninstagram.com',
+  'fbcdn.net': 'fbcdn.net',
+}
 
 function isAllowedMediaUrl(rawUrl: string): URL | null {
   try {
@@ -22,8 +27,12 @@ function isAllowedMediaUrl(rawUrl: string): URL | null {
     }
 
     const hostname = parsed.hostname.toLowerCase()
-    const isAllowedHost = ALLOWED_HOST_PATTERNS.some((pattern) => pattern.test(hostname))
-    if (!isAllowedHost) {
+    if (!ALLOWED_MEDIA_HOSTS.has(hostname)) {
+      return null
+    }
+
+    const canonicalHost = CANONICAL_HOST_BY_HOST[hostname]
+    if (!canonicalHost) {
       return null
     }
 
@@ -42,7 +51,7 @@ function isAllowedMediaUrl(rawUrl: string): URL | null {
       return null
     }
 
-    const safeUrl = new URL(`https://${hostname}`)
+    const safeUrl = new URL(`https://${canonicalHost}`)
     safeUrl.pathname = parsed.pathname
     safeUrl.search = parsed.search
 

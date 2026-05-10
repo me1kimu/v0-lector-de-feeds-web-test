@@ -302,7 +302,7 @@ function extractArticleContent(html: string): string {
   if (paragraphs && paragraphs.length > 0) {
     // Filter out short paragraphs (likely navigation/footer)
     const goodParagraphs = paragraphs
-      .map(p => p.replace(/<[^>]+>/g, '').replace(/[<>]/g, '').trim())
+      .map(p => escapeHtml(p.replace(/<[^>]+>/g, '').trim()))
       .filter(p => p.length > 50)
     
     if (goodParagraphs.length >= 2) {
@@ -311,6 +311,15 @@ function extractArticleContent(html: string): string {
   }
   
   return ''
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 function findArticleBody(data: unknown): string | null {

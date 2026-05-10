@@ -78,8 +78,45 @@ function isDisallowedHostname(hostname: string): boolean {
   if (host === '::1') return true
 
   if (isPrivateIPv4(host)) return true
+  if (isDisallowedIPv6(host)) return true
 
   return false
+}
+
+function isDisallowedIPv6(host: string): boolean {
+  const normalized = normalizeIPv6Host(host)
+  if (!normalized) return false
+
+  if (normalized === '::1') return true // loopback
+  if (normalized === '::') return true // unspecified
+  if (normalized === '::ffff:127.0.0.1') return true // ipv4-mapped loopback
+
+  const firstHextet = parseInt(normalized.split(':')[0] || '0', 16)
+
+  // fc00::/7 unique local addresses
+  if ((firstHextet & 0xfe00) === 0xfc00) return true
+
+  // fe80::/10 link-local addresses
+  if ((firstHextet & 0xffc0) === 0xfe80) return true
+
+  return false
+}
+
+function normalizeIPv6Host(host: string): string | null {
+  let value = host
+
+  if (value.startsWith('[') && value.endsWith(']')) {
+    value = value.slice(1, -1)
+  }
+
+  const zoneIndex = value.indexOf('%')
+  if (zoneIndex !== -1) {
+    value = value.slice(0, zoneIndex)
+  }
+
+  if (!value.includes(':')) return null
+
+  return value.toLowerCase()
 }
 
 function isPrivateIPv4(hostname: string): boolean {

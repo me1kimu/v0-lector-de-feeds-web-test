@@ -96,13 +96,27 @@ function detectSourceType(url: string, htmlUrl?: string): SourceType {
 
 function sanitizeOpmlXml(input: string): string {
   // Block XML features that are unnecessary for OPML import and may be abused.
-  // We keep content as plain OPML XML (outlines/attributes) and reject DTD/PI usage.
-  if (/<!DOCTYPE/i.test(input)) {
-    throw new Error('El archivo OPML contiene una declaración no permitida')
+  // We keep content as plain OPML XML (outlines/attributes) and reject advanced XML features.
+  if (/<!DOCTYPE/i.test(input) || /<!ENTITY/i.test(input) || /<!\[CDATA\[/i.test(input)) {
+    throw new Error('El archivo OPML contiene declaraciones no permitidas')
   }
 
   // Remove processing instructions (except optional XML declaration) to reduce attack surface.
-  return input.replace(/<\?(?!xml[\s>])[\s\S]*?\?>/gi, '')
+  const withoutPi = input.replace(/<\?(?!xml[\s>])[\s\S]*?\?>/gi, '')
+
+  // Only allow tags expected in OPML-like documents.
+  const allowedTags = new Set(['opml', 'head', 'body', 'outline', 'title', 'dateCreated', 'dateModified', 'ownerName', 'ownerEmail'])
+  const tagMatches = withoutPi.match(/<\/?([a-zA-Z][\w:-]*)\b[^>]*>/g) || []
+  for (const rawTag of tagMatches) {
+    const m = rawTag.match(/^<\/?\s*([a-zA-Z][\w:-]*)/i)
+    if (!m) continue
+    const tagName = m[1]
+    if (!allowedTags.has(tagName)) {
+      throw new Error('El archivo OPML contiene etiquetas no permitidas')
+    }
+  }
+
+  return withoutPi
 }
 
 function parseAndValidateOpmlXml(input: string): Document {

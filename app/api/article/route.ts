@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { lookup } from 'node:dns/promises'
+import { domainToASCII } from 'node:url'
 
 // Simple article content extractor
 // Attempts to extract main article content from a web page
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
 
     const validatedParsedUrl = validateExternalArticleUrl(url)
     await assertNoPrivateAddressTarget(validatedParsedUrl.hostname)
+    assertSafeArticlePathname(validatedParsedUrl.pathname)
 
     const safeFetchUrl = new URL(`${validatedParsedUrl.protocol}//${validatedParsedUrl.host}`)
     safeFetchUrl.pathname = validatedParsedUrl.pathname
@@ -75,15 +77,33 @@ function validateExternalArticleUrl(input: string): URL {
     throw new Error('URLs with credentials are not allowed')
   }
 
-  if (!isAllowedArticleHostname(parsed.hostname)) {
+  const asciiHostname = domainToASCII(parsed.hostname)
+  if (!asciiHostname) {
+    throw new Error('Invalid URL host')
+  }
+
+  if (!isAllowedArticleHostname(asciiHostname)) {
     throw new Error('URL host is not allowed')
   }
 
-  if (isDisallowedHostname(parsed.hostname)) {
+  if (isDisallowedHostname(asciiHostname)) {
     throw new Error('URL host is not allowed')
   }
 
   return parsed
+}
+
+function assertSafeArticlePathname(pathname: string): void {
+  const decoded = decodeURIComponent(pathname).toLowerCase()
+  if (
+    decoded.includes('..') ||
+    decoded.includes('%2e') ||
+    decoded.includes('%2f') ||
+    decoded.includes('%5c') ||
+    decoded.includes('\\')
+  ) {
+    throw new Error('URL path is not allowed')
+  }
 }
 
 async function assertNoPrivateAddressTarget(hostname: string): Promise<void> {

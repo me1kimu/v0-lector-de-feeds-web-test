@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
+const ALLOWED_ARTICLE_HOSTS = [
+  'example.com',
+  'news.ycombinator.com',
+  'medium.com'
+]
+
 function validateExternalArticleUrl(input: string): string {
   let parsed: URL
 
@@ -61,11 +67,26 @@ function validateExternalArticleUrl(input: string): string {
     throw new Error('URLs with credentials are not allowed')
   }
 
+  if (!isAllowedArticleHostname(parsed.hostname)) {
+    throw new Error('URL host is not allowed')
+  }
+
   if (isDisallowedHostname(parsed.hostname)) {
     throw new Error('URL host is not allowed')
   }
 
   return parsed.toString()
+}
+
+function isAllowedArticleHostname(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase()
+
+  if (!host) return false
+
+  return ALLOWED_ARTICLE_HOSTS.some((allowedHost) => {
+    const allowed = allowedHost.toLowerCase()
+    return host === allowed || host.endsWith(`.${allowed}`)
+  })
 }
 
 function isDisallowedHostname(hostname: string): boolean {

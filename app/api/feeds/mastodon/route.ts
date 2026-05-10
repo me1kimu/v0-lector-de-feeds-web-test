@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { JSDOM } from 'jsdom'
 import type { FeedItem, FeedSource, MediaAttachment } from '@/lib/types'
 
 interface MastodonStatus {
@@ -204,7 +205,7 @@ export async function POST(request: NextRequest) {
         sourceId: source.id,
         sourceType: 'mastodon',
         sourceName: source.name,
-        content: actualStatus.content.replace(/<[^>]*>/g, ''),
+        content: new JSDOM(actualStatus.content).window.document.body.textContent || '',
         contentHtml: actualStatus.content,
         author: {
           name: actualStatus.account.display_name || actualStatus.account.username,

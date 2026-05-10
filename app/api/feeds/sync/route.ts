@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       updateExisting,
     })
 
-    console.log(`[v0] FeedSync: Sync completed for source ${source.id}:`, {
+    console.log('[v0] FeedSync: Sync completed for source %s:', source.id, {
       itemsAdded: result.itemsAdded,
       itemsUpdated: result.itemsUpdated,
       itemsSkipped: result.itemsSkipped,

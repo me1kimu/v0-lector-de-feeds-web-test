@@ -2,14 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { startAuthentication } from '@simplewebauthn/browser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
-import { Fingerprint, Mail, AlertTriangle, Eye, EyeOff } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { AlertTriangle, Eye, EyeOff } from 'lucide-react'
 
 export function LoginForm() {
   const router = useRouter()
@@ -18,68 +16,6 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [authMethod, setAuthMethod] = useState<'passkey' | 'email'>('passkey')
-
-  const handlePasskeyLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email) {
-      setError('Por favor ingresa tu correo electrónico')
-      return
-    }
-
-    setIsLoading(true)
-    setError('')
-
-    try {
-      // Start passkey authentication
-      const startRes = await fetch('/api/auth/passkey/authenticate-start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, rpId: window.location.hostname })
-      })
-
-      if (!startRes.ok) {
-        const data = await startRes.json()
-        throw new Error(data.error || 'Failed to start authentication')
-      }
-
-      const { options, challenge, userId } = await startRes.json()
-
-      // Perform WebAuthn authentication
-      const credential = await startAuthentication(options)
-
-      // Verify authentication
-      const completeRes = await fetch('/api/auth/passkey/authenticate-complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          credential,
-          challenge,
-          rpId: window.location.hostname
-        })
-      })
-
-      if (!completeRes.ok) {
-        const data = await completeRes.json()
-        throw new Error(data.error || 'Authentication failed')
-      }
-
-      const { session } = await completeRes.json()
-
-      // Store session token
-      localStorage.setItem('session_token', session.token)
-      localStorage.setItem('session_expires', session.expiresAt)
-
-      router.push('/')
-      router.refresh()
-    } catch (err) {
-      console.error('[v0] Passkey login error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to login with passkey')
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -105,7 +41,6 @@ export function LoginForm() {
 
       const { session } = await res.json()
 
-      // Store session token
       localStorage.setItem('session_token', session.token)
       localStorage.setItem('session_expires', session.expiresAt)
 
@@ -119,8 +54,6 @@ export function LoginForm() {
     }
   }
 
-  const handleSubmit = authMethod === 'passkey' ? handlePasskeyLogin : handleEmailLogin
-
   return (
     <div className="w-full max-w-md">
       <Card className="p-8">
@@ -131,41 +64,7 @@ export function LoginForm() {
           </p>
         </div>
 
-        {/* Auth method tabs */}
-        <div className="flex gap-2 mb-6 bg-muted p-1 rounded-lg">
-          <button
-            onClick={() => {
-              setAuthMethod('passkey')
-              setError('')
-            }}
-            className={cn(
-              'flex-1 py-2 px-3 rounded text-sm font-medium transition-colors',
-              authMethod === 'passkey'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Fingerprint className="h-4 w-4 inline mr-2" />
-            Passkey
-          </button>
-          <button
-            onClick={() => {
-              setAuthMethod('email')
-              setError('')
-            }}
-            className={cn(
-              'flex-1 py-2 px-3 rounded text-sm font-medium transition-colors',
-              authMethod === 'email'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Mail className="h-4 w-4 inline mr-2" />
-            Correo
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleEmailLogin} className="space-y-4">
           {error && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
@@ -188,35 +87,33 @@ export function LoginForm() {
             />
           </div>
 
-          {authMethod === 'email' && (
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                Contraseña
-              </label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
+              Contraseña
+            </label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
-          )}
+          </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Spinner className="h-4 w-4 mr-2" />}
-            {authMethod === 'passkey' ? 'Usar Passkey' : 'Iniciar sesión'}
+            Iniciar sesión
           </Button>
         </form>
 

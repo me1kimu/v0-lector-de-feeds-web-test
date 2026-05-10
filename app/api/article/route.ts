@@ -12,12 +12,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 })
     }
 
-    const validatedUrl = validateExternalArticleUrl(url)
-    const validatedParsedUrl = new URL(validatedUrl)
+    const validatedParsedUrl = validateExternalArticleUrl(url)
     await assertNoPrivateAddressTarget(validatedParsedUrl.hostname)
+
+    const safeFetchUrl = new URL(`${validatedParsedUrl.protocol}//${validatedParsedUrl.host}`)
+    safeFetchUrl.pathname = validatedParsedUrl.pathname
+    safeFetchUrl.search = validatedParsedUrl.search
+    safeFetchUrl.hash = validatedParsedUrl.hash
     
     // Fetch the article page
-    const response = await fetch(validatedUrl, {
+    const response = await fetch(safeFetchUrl.toString(), {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; FeedReader/1.0)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ 
       content,
-      url: validatedUrl,
+      url: safeFetchUrl.toString(),
       fetchedAt: Date.now()
     })
   } catch (error) {
@@ -54,7 +58,7 @@ const ALLOWED_ARTICLE_HOSTS = [
   'medium.com'
 ]
 
-function validateExternalArticleUrl(input: string): string {
+function validateExternalArticleUrl(input: string): URL {
   let parsed: URL
 
   try {
@@ -79,7 +83,7 @@ function validateExternalArticleUrl(input: string): string {
     throw new Error('URL host is not allowed')
   }
 
-  return parsed.toString()
+  return parsed
 }
 
 async function assertNoPrivateAddressTarget(hostname: string): Promise<void> {

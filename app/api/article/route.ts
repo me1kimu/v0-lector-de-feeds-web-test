@@ -10,9 +10,11 @@ export async function POST(request: NextRequest) {
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 })
     }
+
+    const validatedUrl = validateExternalArticleUrl(url)
     
     // Fetch the article page
-    const response = await fetch(url, {
+    const response = await fetch(validatedUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; FeedReader/1.0)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
@@ -30,7 +32,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ 
       content,
-      url,
+      url: validatedUrl,
       fetchedAt: Date.now()
     })
   } catch (error) {
@@ -40,6 +42,62 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+function validateExternalArticleUrl(input: string): string {
+  let parsed: URL
+
+  try {
+    parsed = new URL(input)
+  } catch {
+    throw new Error('Invalid URL')
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Only HTTP(S) URLs are allowed')
+  }
+
+  if (parsed.username || parsed.password) {
+    throw new Error('URLs with credentials are not allowed')
+  }
+
+  if (isDisallowedHostname(parsed.hostname)) {
+    throw new Error('URL host is not allowed')
+  }
+
+  return parsed.toString()
+}
+
+function isDisallowedHostname(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase()
+
+  if (!host) return true
+
+  if (host === 'localhost' || host.endsWith('.localhost')) return true
+  if (host === '127.0.0.1' || host === '0.0.0.0') return true
+  if (host === '::1') return true
+
+  if (isPrivateIPv4(host)) return true
+
+  return false
+}
+
+function isPrivateIPv4(hostname: string): boolean {
+  const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (!ipv4Match) return false
+
+  const octets = ipv4Match.slice(1).map(Number)
+  if (octets.some(o => Number.isNaN(o) || o < 0 || o > 255)) return false
+
+  const [a, b] = octets
+
+  if (a === 10) return true
+  if (a === 127) return true
+  if (a === 169 && b === 254) return true
+  if (a === 172 && b >= 16 && b <= 31) return true
+  if (a === 192 && b === 168) return true
+
+  return false
 }
 
 function extractArticleContent(html: string): string {

@@ -27,7 +27,26 @@ function isAllowedMediaUrl(rawUrl: string): URL | null {
       return null
     }
 
-    return parsed
+    const decodedSegments = parsed.pathname
+      .split('/')
+      .filter(Boolean)
+      .map((segment) => {
+        try {
+          return decodeURIComponent(segment)
+        } catch {
+          return segment
+        }
+      })
+
+    if (decodedSegments.some((segment) => segment === '.' || segment === '..')) {
+      return null
+    }
+
+    const safeUrl = new URL(`https://${hostname}`)
+    safeUrl.pathname = parsed.pathname
+    safeUrl.search = parsed.search
+
+    return safeUrl
   } catch {
     return null
   }

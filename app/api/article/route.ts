@@ -18,7 +18,10 @@ export async function POST(request: NextRequest) {
     await assertNoPrivateAddressTarget(canonicalHost)
     assertSafeArticlePathname(validatedParsedUrl.pathname)
 
-    const safeFetchUrl = new URL(`${validatedParsedUrl.protocol}//${canonicalHost}`)
+    const safeFetchUrl = new URL(`https://${canonicalHost}`)
+    safeFetchUrl.username = ''
+    safeFetchUrl.password = ''
+    safeFetchUrl.port = ''
     safeFetchUrl.pathname = validatedParsedUrl.pathname
     safeFetchUrl.search = validatedParsedUrl.search
     safeFetchUrl.hash = validatedParsedUrl.hash
@@ -63,15 +66,15 @@ const ALLOWED_ARTICLE_HOSTS = [
 
 function getCanonicalAllowedArticleHost(hostname: string): string {
   const asciiHostname = domainToASCII(hostname).toLowerCase()
-  const canonicalHost = ALLOWED_ARTICLE_HOSTS.find(
+  const isAllowed = ALLOWED_ARTICLE_HOSTS.some(
     (allowed) => asciiHostname === allowed || asciiHostname.endsWith(`.${allowed}`)
   )
 
-  if (!canonicalHost) {
+  if (!isAllowed) {
     throw new Error('URL host is not allowed')
   }
 
-  return canonicalHost
+  return asciiHostname
 }
 
 function validateExternalArticleUrl(input: string): URL {
@@ -91,7 +94,7 @@ function validateExternalArticleUrl(input: string): URL {
     throw new Error('URLs with credentials are not allowed')
   }
 
-  const asciiHostname = domainToASCII(parsed.hostname)
+  const asciiHostname = domainToASCII(parsed.hostname).toLowerCase()
   if (!asciiHostname) {
     throw new Error('Invalid URL host')
   }

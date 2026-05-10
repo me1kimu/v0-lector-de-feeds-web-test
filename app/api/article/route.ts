@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { lookup } from 'node:dns/promises'
 
 // Simple article content extractor
 // Attempts to extract main article content from a web page
@@ -12,13 +13,16 @@ export async function POST(request: NextRequest) {
     }
 
     const validatedUrl = validateExternalArticleUrl(url)
+    const validatedParsedUrl = new URL(validatedUrl)
+    await assertNoPrivateAddressTarget(validatedParsedUrl.hostname)
     
     // Fetch the article page
     const response = await fetch(validatedUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; FeedReader/1.0)',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
+      },
+      redirect: 'error'
     })
     
     if (!response.ok) {
@@ -76,6 +80,54 @@ function validateExternalArticleUrl(input: string): string {
   }
 
   return parsed.toString()
+}
+
+async function assertNoPrivateAddressTarget(hostname: string): Promise<void> {
+  const results = await lookup(hostname, { all: true })
+
+  if (!results.length) {
+    throw new Error('Unable to resolve URL host')
+  }
+
+  for (const result of results) {
+    const address = result.address
+    const family = result.family
+
+    if ((family === 4 && isPrivateIpv4(address)) || (family === 6 && isPrivateIpv6(address))) {
+      throw new Error('URL resolves to a disallowed network address')
+    }
+  }
+}
+
+function isPrivateIpv4(ip: string): boolean {
+  const parts = ip.split('.').map((part) => Number.parseInt(part, 10))
+
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
+    return true
+  }
+
+  const [a, b] = parts
+
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    a === 0
+  )
+}
+
+function isPrivateIpv6(ip: string): boolean {
+  const normalized = ip.trim().toLowerCase()
+
+  return (
+    normalized === '::1' ||
+    normalized === '::' ||
+    normalized.startsWith('fc') ||
+    normalized.startsWith('fd') ||
+    normalized.startsWith('fe80:')
+  )
 }
 
 function isAllowedArticleHostname(hostname: string): boolean {

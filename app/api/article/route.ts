@@ -278,7 +278,7 @@ function extractArticleContent(html: string): string {
   if (paragraphs && paragraphs.length > 0) {
     // Filter out short paragraphs (likely navigation/footer)
     const goodParagraphs = paragraphs
-      .map(p => p.replace(/<[^>]+>/g, '').trim())
+      .map(p => p.replace(/<[^>]+>/g, '').replace(/[<>]/g, '').trim())
       .filter(p => p.length > 50)
     
     if (goodParagraphs.length >= 2) {

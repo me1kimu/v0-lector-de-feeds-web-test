@@ -29,9 +29,12 @@ export function useServiceWorker() {
     if (!isSupported) return
     
     // Skip service worker registration in development to avoid caching issues
+    const hostname = window.location.hostname
+    const isVusercontentHost =
+      hostname === 'vusercontent.net' || hostname.endsWith('.vusercontent.net')
     const isDev = process.env.NODE_ENV === 'development' || 
-                  window.location.hostname.includes('vusercontent.net') ||
-                  window.location.hostname.includes('localhost')
+                  isVusercontentHost ||
+                  hostname.includes('localhost')
     
     if (isDev) {
       // Unregister any existing service workers in development

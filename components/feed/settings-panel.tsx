@@ -94,6 +94,26 @@ function detectSourceType(url: string, htmlUrl?: string): SourceType {
   return 'rss'
 }
 
+function sanitizeOpmlXml(input: string): string {
+  const normalized = input.trim()
+  if (!normalized) throw new Error('Archivo OPML vacío')
+
+  const withoutDoctype = normalized
+    .replace(/<\?xml[\s\S]*?\?>/gi, '')
+    .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+    .replace(/<\?[\s\S]*?\?>/gi, '')
+
+  if (!/<opml[\s>]/i.test(withoutDoctype) || !/<outline[\s>]/i.test(withoutDoctype)) {
+    throw new Error('El archivo no parece ser OPML válido')
+  }
+
+  if (/<\s*(script|iframe|object|embed|svg|math|link|meta|style)\b/i.test(withoutDoctype)) {
+    throw new Error('El archivo OPML contiene etiquetas no permitidas')
+  }
+
+  return withoutDoctype
+}
+
 
 
 interface AddSourceFormProps {
@@ -678,9 +698,11 @@ export function SettingsPanel() {
                       const text = await f.text()
                       setImportStatusText('Analizando OPML...')
 
+                      const safeXml = sanitizeOpmlXml(text)
+
                       // Parse OPML in client using DOMParser to extract outlines
                       const parser = new DOMParser()
-                      const doc = parser.parseFromString(text, 'application/xml')
+                      const doc = parser.parseFromString(safeXml, 'application/xml')
                       const outlines: Array<{ title?: string; url?: string; htmlUrl?: string }> = []
 
                       function walk(node: Element) {

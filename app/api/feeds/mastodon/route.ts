@@ -130,7 +130,18 @@ export async function POST(request: NextRequest) {
     
     // Handle interactions
     if (action && statusId && accessToken) {
-      const actionUrl = `${instance}/api/v1/statuses/${statusId}/${action}`
+      const allowedActions = new Set(['favourite', 'unfavourite', 'reblog', 'unreblog'])
+      if (!allowedActions.has(action)) {
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+      }
+
+      // Mastodon status IDs are numeric strings; reject unsafe path input
+      if (!/^\d+$/.test(statusId)) {
+        return NextResponse.json({ error: 'Invalid statusId' }, { status: 400 })
+      }
+
+      const safeStatusId = encodeURIComponent(statusId)
+      const actionUrl = `${instance}/api/v1/statuses/${safeStatusId}/${action}`
       const response = await fetch(actionUrl, {
         method: 'POST',
         headers

@@ -14,10 +14,11 @@ export async function POST(request: NextRequest) {
     }
 
     const validatedParsedUrl = validateExternalArticleUrl(url)
-    await assertNoPrivateAddressTarget(validatedParsedUrl.hostname)
+    const canonicalHost = getCanonicalAllowedArticleHost(validatedParsedUrl.hostname)
+    await assertNoPrivateAddressTarget(canonicalHost)
     assertSafeArticlePathname(validatedParsedUrl.pathname)
 
-    const safeFetchUrl = new URL(`${validatedParsedUrl.protocol}//${validatedParsedUrl.host}`)
+    const safeFetchUrl = new URL(`${validatedParsedUrl.protocol}//${canonicalHost}`)
     safeFetchUrl.pathname = validatedParsedUrl.pathname
     safeFetchUrl.search = validatedParsedUrl.search
     safeFetchUrl.hash = validatedParsedUrl.hash
@@ -59,6 +60,19 @@ const ALLOWED_ARTICLE_HOSTS = [
   'news.ycombinator.com',
   'medium.com'
 ]
+
+function getCanonicalAllowedArticleHost(hostname: string): string {
+  const asciiHostname = domainToASCII(hostname).toLowerCase()
+  const canonicalHost = ALLOWED_ARTICLE_HOSTS.find(
+    (allowed) => asciiHostname === allowed || asciiHostname.endsWith(`.${allowed}`)
+  )
+
+  if (!canonicalHost) {
+    throw new Error('URL host is not allowed')
+  }
+
+  return canonicalHost
+}
 
 function validateExternalArticleUrl(input: string): URL {
   let parsed: URL

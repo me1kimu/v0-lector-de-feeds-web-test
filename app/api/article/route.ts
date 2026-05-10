@@ -172,7 +172,12 @@ function extractArticleContent(html: string): string {
   if (jsonLdMatch) {
     for (const match of jsonLdMatch) {
       try {
-        const jsonContent = match.replace(/<script[^>]*>|<\/script>/gi, '')
+        let jsonContent = match
+        while (true) {
+          const next = jsonContent.replace(/<script[^>]*>|<\/script>/gi, '')
+          if (next === jsonContent) break
+          jsonContent = next
+        }
         const data = JSON.parse(jsonContent)
         const articleBody = findArticleBody(data)
         if (articleBody && articleBody.length > 200) {

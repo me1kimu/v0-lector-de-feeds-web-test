@@ -103,6 +103,21 @@ export async function POST(request: NextRequest) {
     if (!instance) {
       return NextResponse.json({ error: 'A valid public instance URL is required' }, { status: 400 })
     }
+
+    // Enforce server-side allowlist to prevent SSRF via arbitrary public hosts
+    const allowedInstances = (process.env.MASTODON_ALLOWED_INSTANCES || '')
+      .split(',')
+      .map((v) => v.trim().replace(/\/+$/, ''))
+      .filter(Boolean)
+
+    if (allowedInstances.length === 0) {
+      console.error('MASTODON_ALLOWED_INSTANCES is not configured')
+      return NextResponse.json({ error: 'Mastodon instance allowlist is not configured' }, { status: 500 })
+    }
+
+    if (!allowedInstances.includes(instance)) {
+      return NextResponse.json({ error: 'Instance is not allowed' }, { status: 400 })
+    }
     
     const headers: HeadersInit = {
       'Content-Type': 'application/json',

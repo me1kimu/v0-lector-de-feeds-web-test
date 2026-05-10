@@ -140,12 +140,19 @@ function isPrivateIPv4(hostname: string): boolean {
 function extractArticleContent(html: string): string {
   // Try to find article content using common selectors/patterns
   
-  // Remove script and style tags
+  // Remove script/style/noscript tags and comments.
+  // Apply repeatedly until stable to avoid incomplete multi-character sanitization.
   let cleaned = html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, '')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, '')
-    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
+  while (true) {
+    const next = cleaned
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, '')
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, '')
+      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+
+    if (next === cleaned) break
+    cleaned = next
+  }
   
   // Try to extract from common article containers
   const articlePatterns = [

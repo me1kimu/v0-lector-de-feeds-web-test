@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { lookup } from 'node:dns/promises'
 import { domainToASCII } from 'node:url'
+import sanitizeHtml from 'sanitize-html'
 
 // Simple article content extractor
 // Attempts to extract main article content from a web page
@@ -254,23 +255,12 @@ function isPrivateIPv4(hostname: string): boolean {
 function extractArticleContent(html: string): string {
   // Try to find article content using common selectors/patterns
   
-  // Remove script/style/noscript tags and comments.
-  // Apply repeatedly until stable to avoid incomplete multi-character sanitization.
-  let cleaned = html
-  while (true) {
-    const next = cleaned
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, '')
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, '')
-      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, '')
-      .replace(/<!--[\s\S]*?-->/g, '')
-
-    if (next === cleaned) break
-    cleaned = next
-  }
-
-  // Final single-character neutralization to prevent any residual HTML tags
-  // from reforming after multi-character replacements.
-  cleaned = cleaned.replace(/[<>]/g, '')
+  // Use a vetted HTML sanitizer to avoid incomplete multi-character sanitization
+  // and malformed-tag bypasses from regex-only stripping.
+  let cleaned = sanitizeHtml(html, {
+    allowedTags: [],
+    allowedAttributes: {},
+  })
   
   // Try to extract from common article containers
   const articlePatterns = [

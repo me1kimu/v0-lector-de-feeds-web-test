@@ -267,6 +267,10 @@ function extractArticleContent(html: string): string {
     if (next === cleaned) break
     cleaned = next
   }
+
+  // Final single-character neutralization to prevent any residual HTML tags
+  // from reforming after multi-character replacements.
+  cleaned = cleaned.replace(/[<>]/g, '')
   
   // Try to extract from common article containers
   const articlePatterns = [

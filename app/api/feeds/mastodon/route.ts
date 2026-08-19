@@ -65,7 +65,12 @@ function isPrivateOrLocalHostname(hostname: string): boolean {
 }
 
 function normalizeAndValidateInstanceUrl(rawInstance: string): string | null {
-  let value = (rawInstance || '').trim().replace(/\/+$/, '')
+  let value = (rawInstance || '').trim()
+  let end = value.length
+  while (end > 0 && value.charCodeAt(end - 1) === 47) {
+    end--
+  }
+  value = value.slice(0, end)
   if (!value) return null
 
   if (!value.startsWith('http://') && !value.startsWith('https://')) {

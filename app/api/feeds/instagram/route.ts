@@ -175,7 +175,7 @@ function parseInstagramMrss(xml: string, source: FeedSource): FeedItem[] {
       .trim()
     
     const item: FeedItem = {
-      id: `instagram-${source.id}-${link || Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `instagram-${source.id}-${link || Date.now()}-${crypto.randomUUID()}`,
       sourceId: source.id,
       sourceType: 'instagram',
       sourceName: source.name,

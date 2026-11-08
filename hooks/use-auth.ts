@@ -11,6 +11,8 @@ interface LocalAuthState {
   platformAuthAvailable: false
 }
 
+const LOCAL_MODE_ERROR = 'La aplicación ahora funciona en modo local y no usa cuentas online.'
+
 const LOCAL_AUTH_STATE: LocalAuthState = {
   user: null,
   session: null,
@@ -28,19 +30,19 @@ export function useAuth() {
   }, [])
 
   const registerWithPasskey = useCallback(async (_email: string, _displayName?: string) => {
-    throw new Error('La aplicación ahora funciona en modo local y no usa cuentas online.')
+    throw new Error(LOCAL_MODE_ERROR)
   }, [])
 
   const signInWithPasskey = useCallback(async (_email?: string) => {
-    throw new Error('La aplicación ahora funciona en modo local y no usa cuentas online.')
+    throw new Error(LOCAL_MODE_ERROR)
   }, [])
 
   const signUpWithEmail = useCallback(async (_email: string, _password: string, _displayName?: string) => {
-    throw new Error('La aplicación ahora funciona en modo local y no usa cuentas online.')
+    throw new Error(LOCAL_MODE_ERROR)
   }, [])
 
   const signInWithEmail = useCallback(async (_email: string, _password: string) => {
-    throw new Error('La aplicación ahora funciona en modo local y no usa cuentas online.')
+    throw new Error(LOCAL_MODE_ERROR)
   }, [])
 
   const signOut = useCallback(async () => {

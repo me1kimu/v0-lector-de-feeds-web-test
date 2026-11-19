@@ -61,7 +61,7 @@
     "crypto-js": "^4.2.0",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.6.0",
-    "fast-xml-parser": "^5.7.0",
+    "fast-xml-parser": "^5.12.0",
     "input-otp": "1.4.2",
     "isomorphic-dompurify": "^3.19.0",
     "jose": "^6.2.3",
@@ -82,7 +82,7 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "vaul": "^1.1.2",
-    "zod": "^4.6.6",
+    "zod": "^4.6.7",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
